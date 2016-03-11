@@ -47,9 +47,13 @@ class ASLController : public AbstractController {
 	double irSmooth[number_ir_sensors];
 	double smoothingFactor;
 	
-	int triggers[7];
-	int neurons[7];
-	int prev_neurons[7];
+	// new stuff for RNN
+	float triggers[8];
+	float triggersDecay[8];
+	float neurons[8];
+	float neuronsPrev[8];
+	std::ofstream outTrigger;
+	std::ofstream outTriggerDecay;
     
     // TODO: remove these, artifacts from previous iterations
     bool done;
@@ -81,6 +85,7 @@ class ASLController : public AbstractController {
 	std::ofstream outRNN3;
 	std::ofstream inCSMTL;
 	std::ofstream outCSMTL;
+
 	int runNumber;
 	int counter;
 	

@@ -1,5 +1,5 @@
 #include "aslcontroller.h"
-
+#include <iomanip>
 /**
  * Action-Sequence-Learning Controller for 
  * FourWheeldRPos_Gripper(Nimm4 with added sensors and gripper)
@@ -52,12 +52,13 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	addInspectableValue("parameter8", &parameter.at(7),"parameter8");	
 	
 	// RNN
-	for (int i=0; i<7; i++){
-		triggers[i] = 0;
-		neurons[i] = 0;
-		prev_neurons[i] = 0;
+	for (int i=0; i<8; i++){
+		triggers[i] = 0.0;
+		triggersDecay[i] = 0.0;
+		neurons[i] = 0.0;
+		neuronsPrev[i] = 0.0;
 	}
-	triggers[0] = 1;
+	triggers[0] = 1.0;
 
 
 }
@@ -140,9 +141,13 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 ********************************************************************************************/
 
 
-
-	distanceCurrentBox = distances[currentBox];
-	angleCurrentBox = angles[currentBox];
+	if (haveTarget) { 
+		distanceCurrentBox = distances[currentBox];
+		angleCurrentBox = angles[currentBox];
+	} else {
+		distanceCurrentBox = -1.0;
+		angleCurrentBox = 0.0;
+	}
 	irLeftLong = irSmooth[3];
 	irRightLong = irSmooth[2];
 	irLeftShort = irSmooth[5];
@@ -162,6 +167,8 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 
 	if (reset){		
 		haveTarget = false;
+		distanceCurrentBox = -1.0;
+		angleCurrentBox = -1.0;
 		prevhaveTarget = false;
 		boxGripped = false;
 		dropStuff = false;
@@ -172,12 +179,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		counter =0;
 
 		// RNN reset
-		for (int i=0; i<7; i++){
-			triggers[i] = 0;
-			neurons[i] = 0;
-			prev_neurons[i] = 0;
+		for (int i=0; i<8; i++){
+			triggers[i] = 0.0;
+			triggersDecay[i] = 0.0;
+			neurons[i] = 0.0;
+			neuronsPrev[i] = 0.0;
 		}
-		triggers[0] = 1;
+		triggers[0] = 1.0;
+		triggersDecay[0] = 1.0;
 	} else {
 		/*********************
 		** Hand designed RNN
@@ -189,17 +198,28 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		
 		if (counter > 1) {
 			// create triggers
+
+			// reset triggers to 0
+			for (int i=0; i<8; i++)	triggers[i] = 0;
+
+			// alternativelz slowly decay triggers
+			for (int i=0; i<8; i++)	triggersDecay[i] *= 0.8;
+			
 			if (state==0) {
-				if (prevhaveTarget)	{
+				if (!prevhaveTarget) {
+					triggers[0] = 1.0;
+					triggersDecay[0] = 1.0;
+				} else {
+//				if (prevhaveTarget)	{
 					state++;
-					for (int i=0; i<7; i++)	triggers[i] = 0;
-					triggers[1] = 1;
+					triggers[1] = 1.0;
+					triggersDecay[1] = 1.0;
 				}
 			} else if (state==1){
 				if (distanceCurrentBox <= boxTouching ){
 					state++;
-					for (int i=0; i<7; i++)	triggers[i] = 0;
-					triggers[2] = 1;
+					triggers[2] = 1.0;
+					triggersDecay[2] = 1.0;
 				}
 			} else if (state==2){
 				if (testBoxCounter < 100)
@@ -211,51 +231,68 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 						haveTarget = false;
 						prevhaveTarget = false;
 						state = 0;
-						for (int i=0; i<7; i++)	triggers[i] = 0;
-						triggers[0] = 1;
+						triggers[0] = 1.0;
+						triggersDecay[0] = 1.0;
 					} else {
 						boxGripped = true; // not being used
 						state++;
-						for (int i=0; i<7; i++)	triggers[i] = 0;
-						triggers[3] = 1;
+						triggers[3] = 1.0;
+						triggersDecay[3] = 1.0;
 					}
 				}
 			} else if (state ==3){
 				if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
 					state++;
-					for (int i=0; i<7; i++)	triggers[i] = 0;
-					triggers[4] = 1;
+					triggers[4] = 1.0;
+					triggersDecay[4] = 1.0;
 				}
 			} else if (state ==4){
 				if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
 					state++;
-					for (int i=0; i<7; i++)	triggers[i] = 0;
-					triggers[5] = 1;
+					triggers[5] = 1.0;
+					triggersDecay[5] = 1.0;
 					motors[0]=0.0; motors[2] = 0.0;
 					motors[1]=0.0; motors[3] = 0.0;
 				}
 			} else if (state ==5){
 				if (irFrontLeft < irFrontClearDistance){		
 					boxGripped = false;
-					for (int i=0; i<7; i++)	triggers[i] = 0;
-					triggers[6] = 1;
+					triggers[6] = 1.0;
+					triggersDecay[6] = 1.0;
 					state++;
 				}
 			} else if (state ==6){
 				if (irFrontLeft > irFrontClearDistance){
-					for (int i=0; i<7; i++)	triggers[i] = 0;
 					triggers[7] = 1;
+					triggersDecay[7] = 1.0;
 					state++;
 				}
-			} else {		
+			} else {	
 				reset = true;
 				runNumber++;
 			}
-		
-			for (int i=0; i<7; i++) std::cout<<triggers[i]<<" ";
+			/* print trigger and trigger decay for debuggin purposes
+			for (int i=0; i<8; i++) std::cout<<triggers[i]<<" ";
+			std::cout<<"____";
+			for (int i=0; i<8; i++) std::cout<<triggersDecay[i]<<" ";
 			std::cout<<endl;
-		
-	
+			*/
+			
+			for (int i=0; i<8; i++){
+				neuronsPrev[i] = neurons[i];
+				neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
+			}				
+			//for (int i=0; i<8; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
+			//std::cout<<endl;
+			int max = 0;
+			float maxNum = 0;
+			for (int i=0; i<8; i++) {
+				if (neurons[i]>maxNum){
+					max = i; maxNum = neurons[i];
+				}
+			}
+			if (state != max) std::cout<<state<<" "<<max<<endl;
+						
 			// execute action
 			if (state==0) {
 				getTargetAction = true;
@@ -355,7 +392,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		
 	motorLeft = motors[0]; motorRight = motors[1];
 	if (!reset && runNumber>0 && counter>1) {
-		//store();
+		store();
 		//storeBySkillCSMTL();
 	}
 	counter++;
@@ -527,6 +564,15 @@ void ASLController::store(){
 	outRNN3.precision(5);
 	outRNN3<<fixed;
 	
+	std::string outTriggername = "../data/outRNN_trigger.txt";	
+	outTrigger.open (outTriggername.c_str(), ios::app);
+	outTrigger.precision(5);
+	outTrigger<<fixed;
+	
+	std::string outTriggerDecayname = "../data/outRNN_triggerDecay.txt";	
+	outTriggerDecay.open (outTriggerDecayname.c_str(), ios::app);
+	outTriggerDecay.precision(5);
+	outTriggerDecay<<fixed;
 
 /*	
 	std::string inCSMTLname = "../data/inCSMTL" + std::to_string(runNumber) + ".txt";
@@ -605,6 +651,16 @@ void ASLController::store(){
 		else inRNN3<<"0";
 		inRNN3<<"\n";
 	}
+
+	for (int i=0; i<7; i++) {
+		outTrigger<<triggers[i]<<" ";
+	}
+	outTrigger<<"\n";
+	for (int i=0; i<7; i++) {
+		outTriggerDecay<<triggersDecay[i]<<" ";
+	}
+	outTriggerDecay<<"\n";
+
 /*	
 	inCSMTL<<" ";
 	inCSMTL<<prevMotorLeft<<" "<<prevMotorRight;	
@@ -622,11 +678,14 @@ void ASLController::store(){
 	outCSMTL<<"\n";
 */	
 	
+	
   	inRNN.close();
   	inRNN2.close();	
   	inRNN3.close();	
 	outRNN.close();
 	outRNN3.close();
+	outTrigger.close();
+	outTriggerDecay.close();
 // 	inCSMTL.close();  	
 //	outCSMTL.close();
 }
