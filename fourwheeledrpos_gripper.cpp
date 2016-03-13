@@ -229,7 +229,7 @@ namespace lpzrobots {
 
 	// DSW 4 front laser sensors pointing downwards to detect the gap
 	if (conf.irFront){ // add front left and front right infrared sensor to sensorbank if required
-		for(int i=-1; i<2; i+=2){ //for(int i=-1; i<2; i+=2){ 
+/*		for(int i=-1; i<2; i+=2){ //for(int i=-1; i<2; i+=2){ 
 			IRSensor* sensor = new IRSensor();
 			irSensorBank.registerSensor(sensor, objects[0],
 			  //Matrix::rotate(-M_PI/8, Vec3(0,1,0)) * // DSW pointing downwards
@@ -237,6 +237,24 @@ namespace lpzrobots {
 			  Matrix::translate(0,-i*width/10,length/2 + width/2 - width/60 ),
 			  conf.irRangeFront, RaySensor::drawAll);
       	}
+*/
+		// frontal sensor
+		IRSensor* sensor = new IRSensor();
+		irSensorBank.registerSensor(sensor, objects[0],
+		//Matrix::rotate(-M_PI/8, Vec3(0,1,0)) * // DSW pointing downwards
+		//Matrix::rotate(i*M_PI/10, Vec3(1,0,0)) *
+		  Matrix::translate(0,0,length/2 + width/2 - width/60 ),
+		  conf.irRangeFront, RaySensor::drawAll);
+		
+		// Frontal sensor used as touch sensor on gripper
+		IRSensor* sensor1 = new IRSensor();
+		irSensorBank.registerSensor(sensor1, objects[0],
+		//Matrix::rotate(-M_PI/8, Vec3(0,1,0)) * // DSW pointing downwards
+		//Matrix::rotate(i*M_PI/10, Vec3(1,0,0)) *
+		  Matrix::translate(0.35,0, 0.799),
+		  conf.irRangeFront, RaySensor::drawAll);
+		
+		
 		for(int i=-3; i<4; i+=6){ //for(int i=-1; i<2; i+=2){ // DSW added 2 more sensors
 			IRSensor* sensor = new IRSensor();
 			irSensorBank.registerSensor(sensor, objects[0],

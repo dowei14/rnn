@@ -92,7 +92,7 @@ class ASLController : public AbstractController {
 	// sensor values
 	double distanceCurrentBox, angleCurrentBox;
 	double irLeftLong, irRightLong, irLeftShort, irRightShort;
-	double irFrontLeft,irFrontRight;
+	double irFront,touchGripper;
 	// parameters
 	double boxTouching;
 	double irFloorDistance;

@@ -152,18 +152,17 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	irRightLong = irSmooth[2];
 	irLeftShort = irSmooth[5];
 	irRightShort = irSmooth[4];
-	irFrontLeft = irSmooth[1];
-	irFrontRight = irSmooth[0];
-	
+	irFront = irSmooth[0];
+	if (irSmooth[1] > 0.99) touchGripper = 1.0;
+	else touchGripper = 0.0;
 	parameter.at(0) = irLeftLong;
 	parameter.at(1) = irRightLong;
 	parameter.at(2) = irLeftShort;
 	parameter.at(3) = irRightShort;	
-	parameter.at(4) = irFrontLeft;
-	parameter.at(5) = irFrontRight;	
+	parameter.at(4) = touchGripper;
+	parameter.at(5) = irFront;	
 	parameter.at(6) = distanceCurrentBox;	
 	parameter.at(7) = angleCurrentBox;			
-
 
 	if (reset){		
 		haveTarget = false;
@@ -255,14 +254,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 					motors[1]=0.0; motors[3] = 0.0;
 				}
 			} else if (state ==5){
-				if (irFrontLeft < irFrontClearDistance){		
+				if (irFront < irFrontClearDistance){		
 					boxGripped = false;
 					triggers[6] = 1.0;
 					triggersDecay[6] = 1.0;
 					state++;
 				}
 			} else if (state ==6){
-				if (irFrontLeft > irFrontClearDistance){
+				if (irFront > irFrontClearDistance){
 					triggers[7] = 1;
 					triggersDecay[7] = 1.0;
 					state++;
@@ -385,11 +384,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	
 */
 	for (int i=0;i<4;i++){
-	if (motors[i]>1.0) motors[i]=1.0;
-	if (motors[i]<-1.0) motors[i]=-1.0;
-	
+		if (motors[i]>1.0) motors[i]=1.0;
+		if (motors[i]<-1.0) motors[i]=-1.0;	
 	}
-		
+
+
+	//for (int i=0;i<4;i++) motors[i]=0.0; // STOP ROBOT
+
+
 	motorLeft = motors[0]; motorRight = motors[1];
 	if (!reset && runNumber>0 && counter>1) {
 		store();
@@ -625,7 +627,7 @@ void ASLController::store(){
 		inRNN<<" ";
 		inRNN<<distanceCurrentBox<<" "<<angleCurrentBox;
 		inRNN<<" ";
-		inRNN<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFrontLeft<<" "<<irFrontRight;
+		inRNN<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 		inRNN<<" ";
 		if (prevhaveTarget) inRNN<<"1";
 		else inRNN<<"0";
@@ -635,7 +637,7 @@ void ASLController::store(){
 		inRNN2<<" ";
 		inRNN2<<distanceCurrentBox<<" "<<angleCurrentBox;
 		inRNN2<<" ";
-		inRNN2<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFrontLeft<<" "<<irFrontRight;
+		inRNN2<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 		inRNN2<<" ";
 		if (prevhaveTarget) inRNN2<<"1";
 		else inRNN2<<"0";
@@ -645,7 +647,7 @@ void ASLController::store(){
 		inRNN3<<" ";
 		inRNN3<<distanceCurrentBox<<" "<<angleCurrentBox;
 		inRNN3<<" ";
-		inRNN3<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFrontLeft<<" "<<irFrontRight;
+		inRNN3<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 		inRNN3<<" ";
 		if (prevhaveTarget) inRNN3<<"1";
 		else inRNN3<<"0";
@@ -667,7 +669,7 @@ void ASLController::store(){
 	inCSMTL<<" ";
 	inCSMTL<<distanceCurrentBox<<" "<<angleCurrentBox;
 	inCSMTL<<" ";
-	inCSMTL<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFrontLeft<<" "<<irFrontRight;
+	inCSMTL<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	inCSMTL<<"\n";
 	if (prevhaveTarget) inCSMTL<<"1";
 	else inCSMTL<<"0";
@@ -715,7 +717,7 @@ void ASLController::storeBySkillCSMTL(){
 	inCSMTL<<" ";
 	inCSMTL<<distanceCurrentBox<<" "<<angleCurrentBox;
 	inCSMTL<<" ";
-	inCSMTL<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFrontLeft<<" "<<irFrontRight;
+	inCSMTL<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	inCSMTL<<"\n";
 	if (prevhaveTarget) inCSMTL<<"1";
 	else inCSMTL<<"0";
