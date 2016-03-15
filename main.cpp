@@ -34,7 +34,6 @@
 
 // controller
 #include "aslcontroller.h"
-//#include "fsmcontroller.h"
 
 // fetch all the stuff of lpzrobots into scope
 using namespace lpzrobots;
@@ -235,7 +234,6 @@ public:
     	vehicle->place(osg::Matrix::rotate(0, 0, 0, 1) *osg::Matrix::translate(pos));
 		
 		qcontroller = new ASLController("1","1");
-//		qcontroller = new FSMController("1","1", vehicle, grippables);
 		qcontroller->setGrippablesAndVehicle(vehicle,grippables);
 		global.configs.push_back(qcontroller);
 
