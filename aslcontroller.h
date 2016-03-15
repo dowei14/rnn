@@ -52,8 +52,7 @@ class ASLController : public AbstractController {
 	float triggersDecay[8];
 	float neurons[8];
 	float neuronsPrev[8];
-	std::ofstream outTrigger;
-	std::ofstream outTriggerDecay;
+
     
     // TODO: remove these, artifacts from previous iterations
     bool done;
@@ -64,9 +63,6 @@ class ASLController : public AbstractController {
     int testBoxCounter;
     int dropBoxCounter;
 	int crossGapCounter;
-	bool atEdge;
-	bool atBox;
-	bool nearEdge;
 
 
 	// for training
@@ -83,6 +79,8 @@ class ASLController : public AbstractController {
 	std::ofstream inRNN3;
 	std::ofstream outRNN;
 	std::ofstream outRNN3;
+	std::ofstream outTrigger;
+	std::ofstream outTriggerDecay;
 
 	int runNumber;
 	int counter;
@@ -139,7 +137,7 @@ class ASLController : public AbstractController {
 	virtual bool goToRandomBox(double boxDistance, double boxAngle, motor* motors);
 	virtual bool testBox(double boxDistance, motor* motors, int& testBoxCounter, bool& isGripped);
 	virtual bool moveToEdge(double irLeft, double irRight, motor* motors);
-	virtual bool orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors, bool& atEdge);
+	virtual bool orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors);
 	virtual bool dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, bool& isGripped);
 	virtual bool crossGap(motor* motors, int& crossGapCounter);
 

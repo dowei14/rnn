@@ -21,7 +21,6 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	testBoxCounter = 0;
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
-	atEdge = false;
 	haveTarget = false;
 	prevhaveTarget = false;
 	boxGripped = false;
@@ -332,7 +331,7 @@ void ASLController::rnnStep(motor* motors){
 		} else if (state==3){
 			moveToEdge(irLeftLong,irRightLong,motors);
 		} else if (state==4){
-			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors, atEdge);
+			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors);
 		} else if (state==5){
 			dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
 		} else if (state==6){
@@ -401,7 +400,7 @@ void ASLController::fsmStep(motor* motors){
 		} else if (state==3){
 			moveToEdge(irLeftLong,irRightLong,motors);
 		} else if (state==4){
-			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors, atEdge);
+			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors);
 		} else if (state==5){
 			dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
 		} else if (state==6){
@@ -452,7 +451,7 @@ bool ASLController::moveToEdge(double irLeft, double irRight, motor* motors){
 	return done;
 }
 
-bool ASLController::orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors, bool& atEdge){
+bool ASLController::orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors){
 	bool done = false;
 	double left = 0.0;
 	double right = 0.0;
@@ -604,9 +603,6 @@ void ASLController::store(){
 	//		if (i==2) outRNN<<"\n";
 
 		
-	//		if (i == state)	inCSMTL<<"1";
-	//		else inCSMTL<<"0";
-	//		if (i<6) inCSMTL<<" ";
 		}
 
 
