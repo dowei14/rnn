@@ -36,7 +36,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	smoothingFactor = 1.0;
 	state = 0;
 	runNumber = 0;
-	currentBox = 5;
+	currentBox = 0;
 	prevMotorLeft = 0;
 	prevMotorRight = 0;
 
@@ -104,14 +104,9 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	// sensor 11 = y direction to the first object (goal detection sensor)
 	// sensor 12 = z direction to the first object (goal detection sensor)
       
-	// 10-12 : Landmark 1		(0)
-	// 13-15 : Landmark 2		(1)
-	// 16-18 : Landmark 3		(2)
-	// 19-21 : Landmark 4		(3)
-	// 22-24 : Goal      		(4)
-	// 25-27 : Box 1			(5)
-	// 28-30 : Box 2			(6)
-	// 31-33 : Box 3			(7)
+	// 10-12 : Box 1		(0)
+	// 13-15 : Box 2		(1)
+	// 16-18 : Box 3		(2)
       
 	/*****************************************************************************************/
 	// add grippables
@@ -413,7 +408,7 @@ void ASLController::stepNoLearning(const sensor* , int number_sensors,motor* , i
 void ASLController::setTarget(bool& haveTarget){
 	std::random_device rd; // obtain a random number from hardware
 	std::mt19937 eng(rd()); // seed the generator
-	std::uniform_int_distribution<> distr(5, 7); // define the range
+	std::uniform_int_distribution<> distr(0, 2); // define the range
 	currentBox = distr(eng);
 	haveTarget = true;
 }

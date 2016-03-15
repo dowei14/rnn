@@ -40,7 +40,6 @@ using namespace lpzrobots;
 
 
 ASLController* qcontroller;
-//FSMController* qcontroller;
 
 FourWheeledRPosGripper* vehicle;
 
@@ -57,40 +56,6 @@ int runs = 10;
 class ThisSim : public Simulation {
 public:
 
-	// generate 4 landmark spheres and 1 goal
-	void generate_spheres(GlobalData& global)
-	{
-		PassiveSphere* s1;
-		s1 = new PassiveSphere(odeHandle, osgHandle, 0.5, 0.0);
-		s1->setPosition(osg::Vec3(16,16,2));
-		s1->setColor(Color(0,0,1));
-		relative_sensor_obst.push_back(s1);
-		
-		PassiveSphere* s2;
-		s2 = new PassiveSphere(odeHandle, osgHandle, 0.5, 0.0);
-		s2->setPosition(osg::Vec3(-16,-16,2));
-		s2->setColor(Color(0,0,1));
-		relative_sensor_obst.push_back(s2);
-		
-		PassiveSphere* s3;
-		s3 = new PassiveSphere(odeHandle, osgHandle, 0.5, 0.0);
-		s3->setPosition(osg::Vec3(-16,16,2));
-		s3->setColor(Color(0,0,1));
-		relative_sensor_obst.push_back(s3);
-		
-		PassiveSphere* s4;
-		s4 = new PassiveSphere(odeHandle, osgHandle, 0.5, 0.0);
-		s4->setPosition(osg::Vec3(16,-16,2));
-		s4->setColor(Color(0,0,1));
-		relative_sensor_obst.push_back(s4);
-		
-		PassiveSphere* s5;
-		s5 = new PassiveSphere(odeHandle, osgHandle, 0.5, 0.0);
-		s5->setPosition(osg::Vec3(-13,0,2));
-		s5->setColor(Color(0,1,0));
-		relative_sensor_obst.push_back(s5);
-	}
-	
 	// generate 3 goal boxes return Primitives(vector of Primitive*) of boxes to add to grippables
 	void generate_boxes(GlobalData& global)
 	{
@@ -199,12 +164,6 @@ public:
 		setup_Playground(global);
 		Substance material(5.0,10.0,99.0,1.0);
 		this->setGroundSubstance(material);
-		/**************************************************************************************************
-		***			Set up 4 landmark and 1 goal spheres
-		**************************************************************************************************/		
-
-		// not being used atm
-		//generate_spheres(global);
 
 		/**************************************************************************************************
 		***			Set up 3 pushable boxes and add the first one as graspable
@@ -295,12 +254,6 @@ public:
 		**************************************************************************************************/
 		setup_Playground(global);
 	
-		/**************************************************************************************************
-		***			Set up 4 landmark and 1 goal spheres
-		**************************************************************************************************/		
-
-		generate_spheres(global);
-
 		/**************************************************************************************************
 		***			Set up 3 pushable boxes and add the first one as graspable
 		************************************************************************************************/

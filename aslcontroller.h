@@ -15,7 +15,7 @@
 /*********************************************************************
 ***  Parameters
 *********************************************************************/
-	#define number_relative_sensors 8
+	#define number_relative_sensors 3
 	#define number_ir_sensors 6
 
 
