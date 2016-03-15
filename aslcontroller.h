@@ -176,9 +176,9 @@ class ASLController : public AbstractController {
     
     // store Data for learning
     virtual void store();
-//    virtual void storeTriggerBalance();
-//    virtual void storeDecayBalance();    
-//    virtual void storebyState();
+    virtual void storeTriggerBalance();
+	virtual void storeDecayBalance();    
+    virtual void storebyState();
 
   protected:
 
