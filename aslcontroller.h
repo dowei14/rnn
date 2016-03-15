@@ -83,8 +83,6 @@ class ASLController : public AbstractController {
 	std::ofstream inRNN3;
 	std::ofstream outRNN;
 	std::ofstream outRNN3;
-	std::ofstream inCSMTL;
-	std::ofstream outCSMTL;
 
 	int runNumber;
 	int counter;
@@ -175,7 +173,6 @@ class ASLController : public AbstractController {
     
     // store Data for learning
     virtual void store();
-    virtual void storeBySkillCSMTL();
 
   protected:
 

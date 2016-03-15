@@ -390,7 +390,6 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	motorLeft = motors[0]; motorRight = motors[1];
 	if (!reset && runNumber>0 && counter>1) {
 		store();
-		//storeBySkillCSMTL();
 	}
 	counter++;
 
@@ -571,17 +570,6 @@ void ASLController::store(){
 	outTriggerDecay.precision(5);
 	outTriggerDecay<<fixed;
 
-/*	
-	std::string inCSMTLname = "../data/inCSMTL" + std::to_string(runNumber) + ".txt";
-	inCSMTL.open (inCSMTLname.c_str(), ios::app);
-	inCSMTL.precision(5);
-	inCSMTL<<fixed;
-	
-	std::string outCSMTLname = "../data/outCSMTL" + std::to_string(runNumber) + ".txt";
-	outCSMTL.open (outCSMTLname.c_str(), ios::app);
-	outCSMTL.precision(5);
-	outCSMTL<<fixed;
-*/
 	int repetitions = 1; /* this is used to repeat data where the state changes
 	if (prevState != state) repetitions= 100;
 	*********/
@@ -658,22 +646,6 @@ void ASLController::store(){
 	}
 	outTriggerDecay<<"\n";
 
-/*	
-	inCSMTL<<" ";
-	inCSMTL<<prevMotorLeft<<" "<<prevMotorRight;	
-	inCSMTL<<" ";
-	inCSMTL<<distanceCurrentBox<<" "<<angleCurrentBox;
-	inCSMTL<<" ";
-	inCSMTL<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-	inCSMTL<<"\n";
-	if (prevhaveTarget) inCSMTL<<"1";
-	else inCSMTL<<"0";
-	
-	outCSMTL<<motorLeft<<" "<<motorRight;
-	if (getTargetAction) outCSMTL<<" "<<"1";
-	else outCSMTL<<" "<<"0";
-	outCSMTL<<"\n";
-*/	
 	
 	
   	inRNN.close();
@@ -683,45 +655,5 @@ void ASLController::store(){
 	outRNN3.close();
 	outTrigger.close();
 	outTriggerDecay.close();
-// 	inCSMTL.close();  	
-//	outCSMTL.close();
 }
 
-void ASLController::storeBySkillCSMTL(){
-	
-	std::string inCSMTLname = "../data/stateIn" + std::to_string(state) + ".txt";
-	inCSMTL.open (inCSMTLname.c_str(), ios::app);
-	inCSMTL.precision(5);
-	inCSMTL<<fixed;
-	
-	std::string outCSMTLname = "../data/stateOut" + std::to_string(state) + ".txt";
-	outCSMTL.open (outCSMTLname.c_str(), ios::app);
-	outCSMTL.precision(5);
-	outCSMTL<<fixed;
-	
-	for (int i=0;i<7;i++){
-
-		if (i == state)	inCSMTL<<"1";
-		else inCSMTL<<"0";
-		if (i<6) inCSMTL<<" ";
-	}
-
-
-	inCSMTL<<" ";
-	inCSMTL<<prevMotorLeft<<" "<<prevMotorRight;	
-	inCSMTL<<" ";
-	inCSMTL<<distanceCurrentBox<<" "<<angleCurrentBox;
-	inCSMTL<<" ";
-	inCSMTL<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-	inCSMTL<<"\n";
-	if (prevhaveTarget) inCSMTL<<"1";
-	else inCSMTL<<"0";
-	
-	outCSMTL<<motorLeft<<" "<<motorRight;
-	if (getTargetAction) outCSMTL<<" "<<"1";
-	else outCSMTL<<" "<<"0";
-	outCSMTL<<"\n";
-
-  	inCSMTL.close();  	
-	outCSMTL.close();
-}
