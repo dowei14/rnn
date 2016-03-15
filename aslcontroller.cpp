@@ -177,14 +177,15 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	for (int i=0;i<4;i++) motors[i]=0.0; // STOP ROBOT
 	*************************/
 
-	motorLeft = motors[0]; motorRight = motors[1];
+	// store left and right motor values
+	motorLeft = motors[0]; motorRight = motors[1]; 
 
 	// Store Values 
 	if (!reset && runNumber>0 && counter>1) {
 		store();
 	}
-	// increase counter
-	counter++;
+		
+	counter++; // increase counter
 
 		
 };
@@ -226,10 +227,10 @@ void ASLController::rnnStep(motor* motors){
 		// create triggers
 
 		// reset triggers to 0
-		for (int i=0; i<8; i++)	triggers[i] = 0;
+		for (int i=0; i<7; i++)	triggers[i] = 0;
 
 		// alternativelz slowly decay triggers
-		for (int i=0; i<8; i++)	triggersDecay[i] *= 0.8;
+		for (int i=0; i<7; i++)	triggersDecay[i] *= 0.8;
 		
 		if (state==0) {
 			if (!prevhaveTarget) {
@@ -243,6 +244,7 @@ void ASLController::rnnStep(motor* motors){
 			}
 		} else if (state==1){
 			if (distanceCurrentBox <= boxTouching ){
+//			if (touchGripper){
 				state++;
 				triggers[2] = 1.0;
 				triggersDecay[2] = 1.0;
@@ -253,6 +255,7 @@ void ASLController::rnnStep(motor* motors){
 			else {
 				testBoxCounter = 0;
 				if (distanceCurrentBox > boxTouching) {
+//				if (touchGripper) {
 					boxGripped = false; // not being used
 					haveTarget = false;
 					prevhaveTarget = false;
@@ -298,21 +301,21 @@ void ASLController::rnnStep(motor* motors){
 			runNumber++;
 		}
 		/* print trigger and trigger decay for debuggin purposes
-		for (int i=0; i<8; i++) std::cout<<triggers[i]<<" ";
+		for (int i=0; i<7; i++) std::cout<<triggers[i]<<" ";
 		std::cout<<"____";
-		for (int i=0; i<8; i++) std::cout<<triggersDecay[i]<<" ";
+		for (int i=0; i<7; i++) std::cout<<triggersDecay[i]<<" ";
 		std::cout<<endl;
 		*/
 		
-		for (int i=0; i<8; i++){
+		for (int i=0; i<7; i++){
 			neuronsPrev[i] = neurons[i];
 			neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
 		}				
-		//for (int i=0; i<8; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
+		//for (int i=0; i<7; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
 		//std::cout<<endl;
 		int max = 0;
 		float maxNum = 0;
-		for (int i=0; i<8; i++) {
+		for (int i=0; i<7; i++) {
 			if (neurons[i]>maxNum){
 				max = i; maxNum = neurons[i];
 			}
@@ -542,126 +545,201 @@ void ASLController::calculateAnglePositionFromSensors(const sensor* x_)
 
 /*****************************************************************************************
 *** Storing function used to create datasets
+***
+*** 	store 				-> standard without any seperation of data
+*** 	storeTriggerBalance	-> seperates by trigger into + and - samples 
+*** 	storeDecayBalance	-> seperates by decay into + and - samples
+***		storebyState		-> seperates by state
 *****************************************************************************************/
 void ASLController::store(){
-//	std::string inRNNname = "../data/inRNN" + std::to_string(runNumber) + ".txt";
-	std::string inRNNname = "../data/inRNN_18.txt";
-	inRNN.open (inRNNname.c_str(), ios::app);
-	inRNN.precision(5);
-	inRNN<<fixed;
+	// Open Files
+	std::string in18name = "../data/in18.txt";
+	in18.open (in18name.c_str(), ios::app);
+	in18.precision(5);
+	in18<<fixed;
 	
-	std::string inRNNname2 = "../data/inRNN_11.txt";
-	inRNN2.open (inRNNname2.c_str(), ios::app);
-	inRNN2.precision(5);
-	inRNN2<<fixed;
-
-//	std::string outRNNname = "../data/outRNN" + std::to_string(runNumber) + ".txt";
-	std::string outRNNname = "../data/outRNN_binary.txt";	
-	outRNN.open (outRNNname.c_str(), ios::app);
-	outRNN.precision(5);
-	outRNN<<fixed;
-
-	std::string inRNNname3 = "../data/inRNN_12.txt";
-	inRNN3.open (inRNNname3.c_str(), ios::app);
-	inRNN3.precision(5);
-	inRNN3<<fixed;
-
-	std::string outRNNname3 = "../data/outRNN_scalar.txt";	
-	outRNN3.open (outRNNname3.c_str(), ios::app);
-	outRNN3.precision(5);
-	outRNN3<<fixed;
+	std::string in11name = "../data/in11.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
 	
-	std::string outTriggername = "../data/outRNN_trigger.txt";	
-	outTrigger.open (outTriggername.c_str(), ios::app);
-	outTrigger.precision(5);
-	outTrigger<<fixed;
+	std::string in12name = "../data/in12.txt";
+	in12.open (in12name.c_str(), ios::app);
+	in12.precision(5);
+	in12<<fixed;
+
+	std::string out7name = "../data/out7.txt";	
+	out7.open (out7name.c_str(), ios::app);
+	out7.precision(5);
+	out7<<fixed;
+
+	std::string out1name = "../data/out1.txt";	
+	out1.open (out1name.c_str(), ios::app);
+	out1.precision(5);
+	out1<<fixed;
 	
-	std::string outTriggerDecayname = "../data/outRNN_triggerDecay.txt";	
-	outTriggerDecay.open (outTriggerDecayname.c_str(), ios::app);
-	outTriggerDecay.precision(5);
-	outTriggerDecay<<fixed;
-
-	int repetitions = 1; /* this is used to repeat data where the state changes
-	if (prevState != state) repetitions= 100;
-	*********/
-	for (int a=0;a<repetitions;a++){
-
-/***********
-** this stores with binary states
-***********/
-		for (int i=0;i<7;i++){
-	//	for (int i=0;i<3;i++){
-			if (i == prevState)	inRNN<<"1";
-			else inRNN<<"0";
-			inRNN<<" ";
-		
-			if (i == state)	outRNN<<"1";
-			else outRNN<<"0";
-			if (i<6) outRNN<<" ";
-			if (i==6) outRNN<<"\n";
-	//		if (i<2) outRNN<<" ";
-	//		if (i==2) outRNN<<"\n";
-
-		
-		}
-
-
-/***********
-** this stores with 1 state
-***********/
-		double multiplier = 0.1;
-		inRNN3<<prevState*multiplier<<" ";
-		outRNN3<<state*multiplier<<"\n";
-/**********/	
-
-		inRNN<<prevMotorLeft<<" "<<prevMotorRight;	
-		inRNN<<" ";
-		inRNN<<distanceCurrentBox<<" "<<angleCurrentBox;
-		inRNN<<" ";
-		inRNN<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-		inRNN<<" ";
-		if (prevhaveTarget) inRNN<<"1";
-		else inRNN<<"0";
-		inRNN<<"\n";
+	std::string outTname = "../data/outT.txt";	
+	outT.open (outTname.c_str(), ios::app);
+	outT.precision(5);
+	outT<<fixed;
 	
-		inRNN2<<prevMotorLeft<<" "<<prevMotorRight;	
-		inRNN2<<" ";
-		inRNN2<<distanceCurrentBox<<" "<<angleCurrentBox;
-		inRNN2<<" ";
-		inRNN2<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-		inRNN2<<" ";
-		if (prevhaveTarget) inRNN2<<"1";
-		else inRNN2<<"0";
-		inRNN2<<"\n";
+	std::string outDname = "../data/outD.txt";	
+	outD.open (outDname.c_str(), ios::app);
+	outD.precision(5);
+	outD<<fixed;
 
-		inRNN3<<prevMotorLeft<<" "<<prevMotorRight;	
-		inRNN3<<" ";
-		inRNN3<<distanceCurrentBox<<" "<<angleCurrentBox;
-		inRNN3<<" ";
-		inRNN3<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-		inRNN3<<" ";
-		if (prevhaveTarget) inRNN3<<"1";
-		else inRNN3<<"0";
-		inRNN3<<"\n";
+
+	// add binary states to in18 and out7
+	for (int i=0;i<7;i++){
+		if (i == prevState)	in18<<"1";
+		else in18<<"0";
+		in18<<" ";
+	
+		if (i == state)	out7<<"1";
+		else out7<<"0";
+		if (i<6) out7<<" ";
+		if (i==6) out7<<"\n";		
 	}
 
+	// add scalar state to in12 and out1
+	double multiplier = 0.1;
+	in12<<prevState*multiplier<<" ";
+	out1<<state*multiplier<<"\n";
+	
+	// add sensor values to all input files 
+	in18<<prevMotorLeft<<" "<<prevMotorRight;	
+	in18<<" ";
+	in18<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in18<<" ";
+	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in18<<" ";
+	if (boxGripped) in18<<"1";
+	else in18<<"0";
+	in18<<"\n";
+
+	in11<<prevMotorLeft<<" "<<prevMotorRight;	
+	in11<<" ";
+	in11<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in11<<" ";
+	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in11<<" ";
+	if (boxGripped) in11<<"1";
+	else in11<<"0";
+	in11<<"\n";
+
+	in12<<prevMotorLeft<<" "<<prevMotorRight;	
+	in12<<" ";
+	in12<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in12<<" ";
+	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in12<<" ";
+	if (boxGripped) in12<<"1";
+	else in12<<"0";
+	in12<<"\n";
+	
+	
+	// add triggers to outT
 	for (int i=0; i<7; i++) {
-		outTrigger<<triggers[i]<<" ";
+		outT<<triggers[i]<<" ";
 	}
-	outTrigger<<"\n";
-	for (int i=0; i<7; i++) {
-		outTriggerDecay<<triggersDecay[i]<<" ";
-	}
-	outTriggerDecay<<"\n";
+	outT<<"\n";
 
+	// add decay to outD
+	for (int i=0; i<7; i++) {
+		outD<<triggersDecay[i]<<" ";
+	}
+	outD<<"\n";
 	
-	
-  	inRNN.close();
-  	inRNN2.close();	
-  	inRNN3.close();	
-	outRNN.close();
-	outRNN3.close();
-	outTrigger.close();
-	outTriggerDecay.close();
+	// close files	
+  	in11.close();
+  	in12.close();	
+  	in18.close();	
+	out1.close();
+	out7.close();
+	outT.close();
+	outD.close();
 }
+/*
+void ASLController::storeTriggerBalance(){
+	int p = 0; // positive sample
+	for (int i=0; i<7; i++) {
+		if (triggers[i] > 0) p = 1;
+	}
 
+	// Open Files
+	std::string in18name = "../data/in18.txt";
+	in18.open (in18name.c_str(), ios::app);
+	in18.precision(5);
+	in18<<fixed;
+	
+	std::string in11name = "../data/in11.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+	
+	std::string in12name = "../data/in12.txt";
+	in12.open (in12name.c_str(), ios::app);
+	in12.precision(5);
+	in12<<fixed;
+
+	std::string outTname = "../data/outT.txt";	
+	outT.open (outTname.c_str(), ios::app);
+	outT.precision(5);
+	outT<<fixed;
+	
+	// add binary states to in18 and out7
+	for (int i=0;i<7;i++){
+		if (i == prevState)	in18<<"1";
+		else in18<<"0";
+		in18<<" ";		
+	}
+
+	// add scalar state to in12 and out1
+	double multiplier = 0.1;
+	in12<<prevState*multiplier<<" ";
+	
+	// add sensor values to all input files 
+	in18<<prevMotorLeft<<" "<<prevMotorRight;	
+	in18<<" ";
+	in18<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in18<<" ";
+	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in18<<" ";
+	if (boxGripped) in18<<"1";
+	else in18<<"0";
+	in18<<"\n";
+
+	in11<<prevMotorLeft<<" "<<prevMotorRight;	
+	in11<<" ";
+	in11<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in11<<" ";
+	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in11<<" ";
+	if (boxGripped) in11<<"1";
+	else in11<<"0";
+	in11<<"\n";
+
+	in12<<prevMotorLeft<<" "<<prevMotorRight;	
+	in12<<" ";
+	in12<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in12<<" ";
+	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in12<<" ";
+	if (boxGripped) in12<<"1";
+	else in12<<"0";
+	in12<<"\n";
+	
+	
+	// add triggers to outT
+	for (int i=0; i<7; i++) {
+		outT<<triggers[i]<<" ";
+	}
+	outT<<"\n";
+
+	// close files	
+  	in11.close();
+  	in12.close();	
+  	in18.close();	
+	outT.close();
+}
+*/

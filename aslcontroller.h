@@ -48,10 +48,10 @@ class ASLController : public AbstractController {
 	double smoothingFactor;
 	
 	// new stuff for RNN
-	float triggers[8];
-	float triggersDecay[8];
-	float neurons[8];
-	float neuronsPrev[8];
+	float triggers[7];
+	float triggersDecay[7];
+	float neurons[7];
+	float neuronsPrev[7];
 
     
     // TODO: remove these, artifacts from previous iterations
@@ -73,14 +73,15 @@ class ASLController : public AbstractController {
 	bool prevhaveTarget;
 	bool getTargetAction;
 	int prevState;
+	
 	// files for storing
-	std::ofstream inRNN;
-	std::ofstream inRNN2;
-	std::ofstream inRNN3;
-	std::ofstream outRNN;
-	std::ofstream outRNN3;
-	std::ofstream outTrigger;
-	std::ofstream outTriggerDecay;
+	std::ofstream in11;
+	std::ofstream in12;
+	std::ofstream in18;
+	std::ofstream out1;
+	std::ofstream out7;
+	std::ofstream outT;
+	std::ofstream outD;
 
 	int runNumber;
 	int counter;
@@ -175,6 +176,9 @@ class ASLController : public AbstractController {
     
     // store Data for learning
     virtual void store();
+//    virtual void storeTriggerBalance();
+//    virtual void storeDecayBalance();    
+//    virtual void storebyState();
 
   protected:
 
