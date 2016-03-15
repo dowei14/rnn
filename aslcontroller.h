@@ -134,8 +134,7 @@ class ASLController : public AbstractController {
 	virtual void calculateDistanceToGoals(const sensor* x_);
 	virtual void calculateAnglePositionFromSensors(const sensor* x_);
 		
-	// Actions
-	// TODO: Make them void functions
+	// Behaviours
 	virtual void setTarget(bool& haveTarget);
 	virtual bool goToRandomBox(double boxDistance, double boxAngle, motor* motors);
 	virtual bool testBox(double boxDistance, motor* motors, int& testBoxCounter, bool& isGripped);
@@ -143,6 +142,11 @@ class ASLController : public AbstractController {
 	virtual bool orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors, bool& atEdge);
 	virtual bool dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, bool& isGripped);
 	virtual bool crossGap(motor* motors, int& crossGapCounter);
+
+	// Controller Steps
+	virtual void resetParameters();
+	virtual void fsmStep(motor* motors);
+	virtual void rnnStep(motor* motors);
 
 	// DSW return reset variable
 	virtual bool getReset() {

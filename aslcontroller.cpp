@@ -132,9 +132,8 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	prevhaveTarget = haveTarget;
 	
 /********************************************************************************************
-*** FSM
+*** set up parameters
 ********************************************************************************************/
-
 
 	if (haveTarget) { 
 		distanceCurrentBox = distances[currentBox];
@@ -159,158 +158,191 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	parameter.at(6) = distanceCurrentBox;	
 	parameter.at(7) = angleCurrentBox;			
 
-	if (reset){		
-		haveTarget = false;
-		distanceCurrentBox = -1.0;
-		angleCurrentBox = -1.0;
-		prevhaveTarget = false;
-		boxGripped = false;
-		dropStuff = false;
-		testBoxCounter = 0;
-		dropBoxCounter = 0;
-		crossGapCounter = 0;
-		state = 0;
-		counter =0;
+	if (reset) resetParameters();
+	
+/********************************************************************************************
+*** run controller step
+********************************************************************************************/	
+	rnnStep(motors);
+	
+//	fsmStep(motors);
 
-		// RNN reset
-		for (int i=0; i<8; i++){
-			triggers[i] = 0.0;
-			triggersDecay[i] = 0.0;
-			neurons[i] = 0.0;
-			neuronsPrev[i] = 0.0;
-		}
-		triggers[0] = 1.0;
-		triggersDecay[0] = 1.0;
-	} else {
-		/*********************
-		** Hand designed RNN
-		** ******************/
+
+	// capping motor speed at +- 1.0
+	for (int i=0;i<4;i++){
+		if (motors[i]>1.0) motors[i]=1.0;
+		if (motors[i]<-1.0) motors[i]=-1.0;	
+	}
+
+	/*** STOP FORREST
+	for (int i=0;i<4;i++) motors[i]=0.0; // STOP ROBOT
+	*************************/
+
+	motorLeft = motors[0]; motorRight = motors[1];
+
+	// Store Values 
+	if (!reset && runNumber>0 && counter>1) {
+		store();
+	}
+	// increase counter
+	counter++;
 
 		
+};
+
+
+void ASLController::stepNoLearning(const sensor* , int number_sensors,motor* , int number_motors){
+	
+};
+
+void ASLController::resetParameters(){
+	haveTarget = false;
+	distanceCurrentBox = -1.0;
+	angleCurrentBox = -1.0;
+	prevhaveTarget = false;
+	boxGripped = false;
+	dropStuff = false;
+	testBoxCounter = 0;
+	dropBoxCounter = 0;
+	crossGapCounter = 0;
+	state = 0;
+	counter =0;
+
+	// RNN reset
+	for (int i=0; i<8; i++){
+		triggers[i] = 0.0;
+		triggersDecay[i] = 0.0;
+		neurons[i] = 0.0;
+		neuronsPrev[i] = 0.0;
+	}
+	triggers[0] = 1.0;
+	triggersDecay[0] = 1.0;
+}
+
+void ASLController::rnnStep(motor* motors){
+	/*********************
+	** Hand designed RNN
+	** ******************/
+	if (!reset && (counter > 1)) {
+		// create triggers
+
+		// reset triggers to 0
+		for (int i=0; i<8; i++)	triggers[i] = 0;
+
+		// alternativelz slowly decay triggers
+		for (int i=0; i<8; i++)	triggersDecay[i] *= 0.8;
 		
-
-		
-		if (counter > 1) {
-			// create triggers
-
-			// reset triggers to 0
-			for (int i=0; i<8; i++)	triggers[i] = 0;
-
-			// alternativelz slowly decay triggers
-			for (int i=0; i<8; i++)	triggersDecay[i] *= 0.8;
-			
-			if (state==0) {
-				if (!prevhaveTarget) {
+		if (state==0) {
+			if (!prevhaveTarget) {
+				triggers[0] = 1.0;
+				triggersDecay[0] = 1.0;
+			} else {
+//				if (prevhaveTarget)	{
+				state++;
+				triggers[1] = 1.0;
+				triggersDecay[1] = 1.0;
+			}
+		} else if (state==1){
+			if (distanceCurrentBox <= boxTouching ){
+				state++;
+				triggers[2] = 1.0;
+				triggersDecay[2] = 1.0;
+			}
+		} else if (state==2){
+			if (testBoxCounter < 100)
+				testBoxCounter++;
+			else {
+				testBoxCounter = 0;
+				if (distanceCurrentBox > boxTouching) {
+					boxGripped = false; // not being used
+					haveTarget = false;
+					prevhaveTarget = false;
+					state = 0;
 					triggers[0] = 1.0;
 					triggersDecay[0] = 1.0;
 				} else {
-//				if (prevhaveTarget)	{
+					boxGripped = true; // not being used
 					state++;
-					triggers[1] = 1.0;
-					triggersDecay[1] = 1.0;
-				}
-			} else if (state==1){
-				if (distanceCurrentBox <= boxTouching ){
-					state++;
-					triggers[2] = 1.0;
-					triggersDecay[2] = 1.0;
-				}
-			} else if (state==2){
-				if (testBoxCounter < 100)
-					testBoxCounter++;
-				else {
-					testBoxCounter = 0;
-					if (distanceCurrentBox > boxTouching) {
-						boxGripped = false; // not being used
-						haveTarget = false;
-						prevhaveTarget = false;
-						state = 0;
-						triggers[0] = 1.0;
-						triggersDecay[0] = 1.0;
-					} else {
-						boxGripped = true; // not being used
-						state++;
-						triggers[3] = 1.0;
-						triggersDecay[3] = 1.0;
-					}
-				}
-			} else if (state ==3){
-				if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
-					state++;
-					triggers[4] = 1.0;
-					triggersDecay[4] = 1.0;
-				}
-			} else if (state ==4){
-				if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
-					state++;
-					triggers[5] = 1.0;
-					triggersDecay[5] = 1.0;
-					motors[0]=0.0; motors[2] = 0.0;
-					motors[1]=0.0; motors[3] = 0.0;
-				}
-			} else if (state ==5){
-				if (irFront < irFrontClearDistance){		
-					boxGripped = false;
-					triggers[6] = 1.0;
-					triggersDecay[6] = 1.0;
-					state++;
-				}
-			} else if (state ==6){
-				if (irFront > irFrontClearDistance){
-					triggers[7] = 1;
-					triggersDecay[7] = 1.0;
-					state++;
-				}
-			} else {	
-				reset = true;
-				runNumber++;
-			}
-			/* print trigger and trigger decay for debuggin purposes
-			for (int i=0; i<8; i++) std::cout<<triggers[i]<<" ";
-			std::cout<<"____";
-			for (int i=0; i<8; i++) std::cout<<triggersDecay[i]<<" ";
-			std::cout<<endl;
-			*/
-			
-			for (int i=0; i<8; i++){
-				neuronsPrev[i] = neurons[i];
-				neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
-			}				
-			//for (int i=0; i<8; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
-			//std::cout<<endl;
-			int max = 0;
-			float maxNum = 0;
-			for (int i=0; i<8; i++) {
-				if (neurons[i]>maxNum){
-					max = i; maxNum = neurons[i];
+					triggers[3] = 1.0;
+					triggersDecay[3] = 1.0;
 				}
 			}
-			if (state != max) std::cout<<state<<" "<<max<<endl;
-						
-			// execute action
-			if (state==0) {
-				getTargetAction = true;
-				setTarget(haveTarget);
-			} else if (state==1){
-				getTargetAction = false;
-				goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
-			} else if (state==2){
-				testBox(distanceCurrentBox,motors,testBoxCounter, boxGripped);
-			} else if (state==3){
-				moveToEdge(irLeftLong,irRightLong,motors);
-			} else if (state==4){
-				orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors, atEdge);
-			} else if (state==5){
-				dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
-			} else if (state==6){
-				crossGap(motors, crossGapCounter);
+		} else if (state ==3){
+			if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
+				state++;
+				triggers[4] = 1.0;
+				triggersDecay[4] = 1.0;
+			}
+		} else if (state ==4){
+			if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
+				state++;
+				triggers[5] = 1.0;
+				triggersDecay[5] = 1.0;
+				motors[0]=0.0; motors[2] = 0.0;
+				motors[1]=0.0; motors[3] = 0.0;
+			}
+		} else if (state ==5){
+			if (irFront < irFrontClearDistance){		
+				boxGripped = false;
+				triggers[6] = 1.0;
+				triggersDecay[6] = 1.0;
+				state++;
+			}
+		} else if (state ==6){
+			if (irFront > irFrontClearDistance){
+				triggers[7] = 1;
+				triggersDecay[7] = 1.0;
+				state++;
+			}
+		} else {	
+			reset = true;
+			runNumber++;
+		}
+		/* print trigger and trigger decay for debuggin purposes
+		for (int i=0; i<8; i++) std::cout<<triggers[i]<<" ";
+		std::cout<<"____";
+		for (int i=0; i<8; i++) std::cout<<triggersDecay[i]<<" ";
+		std::cout<<endl;
+		*/
+		
+		for (int i=0; i<8; i++){
+			neuronsPrev[i] = neurons[i];
+			neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
+		}				
+		//for (int i=0; i<8; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
+		//std::cout<<endl;
+		int max = 0;
+		float maxNum = 0;
+		for (int i=0; i<8; i++) {
+			if (neurons[i]>maxNum){
+				max = i; maxNum = neurons[i];
 			}
 		}
-
-
+		if (state != max) std::cout<<state<<" "<<max<<endl;
+					
+		// execute action
+		if (state==0) {
+			getTargetAction = true;
+			setTarget(haveTarget);
+		} else if (state==1){
+			getTargetAction = false;
+			goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
+		} else if (state==2){
+			testBox(distanceCurrentBox,motors,testBoxCounter, boxGripped);
+		} else if (state==3){
+			moveToEdge(irLeftLong,irRightLong,motors);
+		} else if (state==4){
+			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors, atEdge);
+		} else if (state==5){
+			dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
+		} else if (state==6){
+			crossGap(motors, crossGapCounter);
+		}
 	}
-/*	FSM
-	if (counter > 1) {
+}
+
+void ASLController::fsmStep(motor* motors){
+	if (!reset &&(counter > 1)) {
 		// determine new state
 		if (state==0) {
 			if (prevhaveTarget)	state++;
@@ -343,12 +375,12 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 				motors[1]=0.0; motors[3] = 0.0;
 			}
 		} else if (state ==5){
-			if (irFrontLeft < irFrontClearDistance){		
+			if (irFront < irFrontClearDistance){		
 				boxGripped = false;
 				state++;
 			}
 		} else if (state ==6){
-			if (irFrontLeft > irFrontClearDistance){
+			if (irFront > irFrontClearDistance){
 				state++;
 			}
 		} else {		
@@ -376,33 +408,10 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 			crossGap(motors, crossGapCounter);
 		}
 	}
-	
-*/
-	for (int i=0;i<4;i++){
-		if (motors[i]>1.0) motors[i]=1.0;
-		if (motors[i]<-1.0) motors[i]=-1.0;	
-	}
-
-
-	//for (int i=0;i<4;i++) motors[i]=0.0; // STOP ROBOT
-
-
-	motorLeft = motors[0]; motorRight = motors[1];
-	if (!reset && runNumber>0 && counter>1) {
-		store();
-	}
-	counter++;
-
-		
-};
-
-
-void ASLController::stepNoLearning(const sensor* , int number_sensors,motor* , int number_motors){
-	
-};
+}
 
 /*****************************************************************************************
-*** Q-Learning Functions
+*** Behaviours
 *****************************************************************************************/
 void ASLController::setTarget(bool& haveTarget){
 	std::random_device rd; // obtain a random number from hardware
@@ -532,6 +541,9 @@ void ASLController::calculateAnglePositionFromSensors(const sensor* x_)
 	}
 }
 
+/*****************************************************************************************
+*** Storing function used to create datasets
+*****************************************************************************************/
 void ASLController::store(){
 //	std::string inRNNname = "../data/inRNN" + std::to_string(runNumber) + ".txt";
 	std::string inRNNname = "../data/inRNN_18.txt";
