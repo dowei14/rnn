@@ -18,7 +18,6 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 
 
 		
-	testBoxCounter = 0;
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
 	haveTarget = false;
@@ -117,7 +116,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 			
 	// smooth ir sensors
 	for (int i=0;i<number_ir_sensors;i++) irSmooth[i] += (sensors[4+i]-irSmooth[i])/smoothingFactor;
-
+//	for (int i=0;i<number_ir_sensors;i++) irSmooth[i] = sensors[4+i];
 
 
 
@@ -134,19 +133,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 *** set up parameters
 ********************************************************************************************/
 
-	if (haveTarget) { 
-		distanceCurrentBox = distances[currentBox];
-		angleCurrentBox = angles[currentBox];
-	} else {
-		distanceCurrentBox = -1.0;
-		angleCurrentBox = 0.0;
-	}
+	distanceCurrentBox = distances[currentBox];
+	angleCurrentBox = angles[currentBox];
 	irLeftLong = irSmooth[3];
 	irRightLong = irSmooth[2];
 	irLeftShort = irSmooth[5];
 	irRightShort = irSmooth[4];
 	irFront = irSmooth[0];
-	if (irSmooth[1] > 0.99) touchGripper = 1.0;
+	if (irSmooth[1] > 0.995) touchGripper = 1.0;
 	else touchGripper = 0.0;
 	parameter.at(0) = irLeftLong;
 	parameter.at(1) = irRightLong;
@@ -182,10 +176,11 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 
 	// Store Values 
 	if (!reset && runNumber>0 && counter>1) {
-		store();
-		storeTriggerBalance();
-		storeDecayBalance();
-		storebyState();
+		//store();
+		//storeTriggerBalance();
+		//storeDecayBalance();
+		//storebyState();
+		storeSingleTrigger(0);
 	}
 		
 	counter++; // increase counter
@@ -205,7 +200,6 @@ void ASLController::resetParameters(){
 	prevhaveTarget = false;
 	boxGripped = false;
 	dropStuff = false;
-	testBoxCounter = 0;
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
 	state = 0;
@@ -234,43 +228,33 @@ void ASLController::rnnStep(motor* motors){
 
 		// alternativelz slowly decay triggers
 		for (int i=0; i<7; i++)	triggersDecay[i] *= 0.8;
-		
+	
 		if (state==0) {
-			if (!prevhaveTarget) {
-				triggers[0] = 1.0;
-				triggersDecay[0] = 1.0;
-			} else {
-//				if (prevhaveTarget)	{
+			if (haveTarget)	{
 				state++;
 				triggers[1] = 1.0;
 				triggersDecay[1] = 1.0;
 			}
 		} else if (state==1){
-			if (distanceCurrentBox <= boxTouching ){
-//			if (touchGripper){
+			if (touchGripper){
 				state++;
 				triggers[2] = 1.0;
 				triggersDecay[2] = 1.0;
 			}
 		} else if (state==2){
-			if (testBoxCounter < 100)
-				testBoxCounter++;
-			else {
-				testBoxCounter = 0;
+			if ( motorLeft < -0.5 ){
 				if (distanceCurrentBox > boxTouching) {
-//				if (touchGripper) {
-					boxGripped = false; // not being used
+					boxGripped = false;
 					haveTarget = false;
-					prevhaveTarget = false;
 					state = 0;
 					triggers[0] = 1.0;
 					triggersDecay[0] = 1.0;
 				} else {
-					boxGripped = true; // not being used
+					boxGripped = true;
 					state++;
 					triggers[3] = 1.0;
 					triggersDecay[3] = 1.0;
-				}
+				}	
 			}
 		} else if (state ==3){
 			if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
@@ -303,6 +287,12 @@ void ASLController::rnnStep(motor* motors){
 			reset = true;
 			runNumber++;
 		}
+		
+		// if there is no target set target sensors accordingly	
+		if (!haveTarget) { 
+			distanceCurrentBox = -1.0;
+			angleCurrentBox = 0.0;
+		}
 		/* print trigger and trigger decay for debuggin purposes
 		for (int i=0; i<7; i++) std::cout<<triggers[i]<<" ";
 		std::cout<<"____";
@@ -323,7 +313,7 @@ void ASLController::rnnStep(motor* motors){
 				max = i; maxNum = neurons[i];
 			}
 		}
-		if (state != max) std::cout<<state<<" "<<max<<endl;
+		//if (state != max) std::cout<<state<<" "<<max<<endl;
 					
 		// execute action
 		if (state==0) {
@@ -333,7 +323,7 @@ void ASLController::rnnStep(motor* motors){
 			getTargetAction = false;
 			goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
 		} else if (state==2){
-			testBox(distanceCurrentBox,motors,testBoxCounter, boxGripped);
+			testBox(distanceCurrentBox,motors);
 		} else if (state==3){
 			moveToEdge(irLeftLong,irRightLong,motors);
 		} else if (state==4){
@@ -356,19 +346,15 @@ void ASLController::fsmStep(motor* motors){
 				state++;
 			}
 		} else if (state==2){
-			if (testBoxCounter < 100)
-				testBoxCounter++;
-			else {
-				testBoxCounter = 0;
+			if ( motorLeft < -0.5 ){
 				if (distanceCurrentBox > boxTouching) {
-					boxGripped = false; // not being used
+					boxGripped = false;
 					haveTarget = false;
 					prevhaveTarget = false;
 					state = 0;
 				} else {
-					boxGripped = true; // not being used
+					boxGripped = true;
 					state++;
-//					state=7;
 				}
 			}
 		} else if (state ==3){
@@ -392,7 +378,12 @@ void ASLController::fsmStep(motor* motors){
 			reset = true;
 			runNumber++;
 		}
-			
+		
+		// if there is no target set target sensors accordingly	
+		if (!haveTarget) { 
+			distanceCurrentBox = -1.0;
+			angleCurrentBox = 0.0;
+		}	
 		
 		// execute action
 		if (state==0) {
@@ -402,7 +393,7 @@ void ASLController::fsmStep(motor* motors){
 			getTargetAction = false;
 			goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
 		} else if (state==2){
-			testBox(distanceCurrentBox,motors,testBoxCounter, boxGripped);
+			testBox(distanceCurrentBox,motors);
 		} else if (state==3){
 			moveToEdge(irLeftLong,irRightLong,motors);
 		} else if (state==4){
@@ -437,10 +428,12 @@ bool ASLController::goToRandomBox(double boxDistance, double boxAngle, motor* mo
 	return done;
 }
 
-bool ASLController::testBox(double boxDistance, motor* motors, int& testBoxCounter, bool& isGripped){
+bool ASLController::testBox(double boxDistance, motor* motors){
 	double speed;
 	bool done = false;
-	speed = -0.5;
+	// stop and accelerate backwards
+	if(motors[0] >0) speed = 0;
+	else speed = motors[0] - 0.01;
 	motors[0]=speed; motors[2] = speed;
 	motors[1]=speed; motors[3] = speed;
 	return done;
@@ -939,4 +932,82 @@ void ASLController::storebyState(){
 	out7.close();
 	outT.close();
 	outD.close();
+}
+
+void ASLController::storeSingleTrigger(int action){
+	int p = 0; // positive sample
+	if (triggers[action] > 0) p = 1;
+
+	// Open Files
+	std::string in18name = "../data/ST/" + std::to_string(action) + "/" + std::to_string(p) + "/in18.txt";
+	in18.open (in18name.c_str(), ios::app);
+	in18.precision(5);
+	in18<<fixed;
+	
+	std::string in11name = "../data/ST/" + std::to_string(action) + "/"  + std::to_string(p) + "/in11.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+	
+	std::string in12name = "../data/ST/" + std::to_string(action) + "/"  + std::to_string(p) + "/in12.txt";
+	in12.open (in12name.c_str(), ios::app);
+	in12.precision(5);
+	in12<<fixed;
+
+	std::string outTname = "../data/ST/" + std::to_string(action) + "/"  + std::to_string(p) + "/outT.txt";	
+	outT.open (outTname.c_str(), ios::app);
+	outT.precision(5);
+	outT<<fixed;
+	
+	// add binary states to in18 and out7
+	for (int i=0;i<7;i++){
+		if (i == prevState)	in18<<"1";
+		else in18<<"0";
+		in18<<" ";		
+	}
+
+	// add scalar state to in12 and out1
+	double multiplier = 0.1;
+	in12<<prevState*multiplier<<" ";
+	
+	// add sensor values to all input files 
+	in18<<prevMotorLeft<<" "<<prevMotorRight;	
+	in18<<" ";
+	in18<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in18<<" ";
+	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in18<<" ";
+	if (boxGripped) in18<<"1";
+	else in18<<"0";
+	in18<<"\n";
+
+	in11<<prevMotorLeft<<" "<<prevMotorRight;	
+	in11<<" ";
+	in11<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in11<<" ";
+	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in11<<" ";
+	if (boxGripped) in11<<"1";
+	else in11<<"0";
+	in11<<"\n";
+
+	in12<<prevMotorLeft<<" "<<prevMotorRight;	
+	in12<<" ";
+	in12<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in12<<" ";
+	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in12<<" ";
+	if (boxGripped) in12<<"1";
+	else in12<<"0";
+	in12<<"\n";
+	
+	
+	// add triggers to outT
+	outT<<triggers[action]<<" "<<"\n";
+
+	// close files	
+  	in11.close();
+  	in12.close();	
+  	in18.close();	
+	outT.close();
 }

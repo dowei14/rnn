@@ -60,7 +60,6 @@ class ASLController : public AbstractController {
     int currentBox;
     int state;
     bool boxGripped;
-    int testBoxCounter;
     int dropBoxCounter;
 	int crossGapCounter;
 
@@ -136,7 +135,7 @@ class ASLController : public AbstractController {
 	// Behaviours
 	virtual void setTarget(bool& haveTarget);
 	virtual bool goToRandomBox(double boxDistance, double boxAngle, motor* motors);
-	virtual bool testBox(double boxDistance, motor* motors, int& testBoxCounter, bool& isGripped);
+	virtual bool testBox(double boxDistance, motor* motors);
 	virtual bool moveToEdge(double irLeft, double irRight, motor* motors);
 	virtual bool orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors);
 	virtual bool dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, bool& isGripped);
@@ -179,6 +178,7 @@ class ASLController : public AbstractController {
     virtual void storeTriggerBalance();
 	virtual void storeDecayBalance();    
     virtual void storebyState();
+    virtual void storeSingleTrigger(int action);
 
   protected:
 
