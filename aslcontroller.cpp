@@ -20,7 +20,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 		
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
-	haveTarget = false;
+	haveTarget = true;
 	prevhaveTarget = false;
 	boxGripped = false;
 	dropStuff = false;
@@ -32,7 +32,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	irFloorDistance = 0.5;
 	irFrontClearDistance = 0.8;
 	smoothingFactor = 1.0;
-	state = 0;
+	state = -1;
 	runNumber = 0;
 	currentBox = 0;
 	prevMotorLeft = 0;
@@ -56,7 +56,6 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 		neurons[i] = 0.0;
 		neuronsPrev[i] = 0.0;
 	}
-	triggers[0] = 1.0;
 
 
 }
@@ -194,7 +193,7 @@ void ASLController::stepNoLearning(const sensor* , int number_sensors,motor* , i
 };
 
 void ASLController::resetParameters(){
-	haveTarget = false;
+	haveTarget = true;
 	distanceCurrentBox = -1.0;
 	angleCurrentBox = -1.0;
 	prevhaveTarget = false;
@@ -202,8 +201,8 @@ void ASLController::resetParameters(){
 	dropStuff = false;
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
-	state = 0;
-	counter =0;
+	state = -1;
+	counter = 0;
 
 	// RNN reset
 	for (int i=0; i<8; i++){
@@ -228,8 +227,12 @@ void ASLController::rnnStep(motor* motors){
 
 		// alternativelz slowly decay triggers
 		for (int i=0; i<7; i++)	triggersDecay[i] *= 0.8;
-	
-		if (state==0) {
+		if (state==-1) {
+			haveTarget = false;
+			state = 0;
+			triggers[0] = 1.0;
+			triggersDecay[0] = 1.0;
+		} else if (state==0) {
 			if (haveTarget)	{
 				state++;
 				triggers[1] = 1.0;
@@ -339,7 +342,10 @@ void ASLController::rnnStep(motor* motors){
 void ASLController::fsmStep(motor* motors){
 	if (!reset &&(counter > 1)) {
 		// determine new state
-		if (state==0) {
+		if (state==-1) {
+			haveTarget = false;
+			state = 0;
+		} else if (state==0) {
 			if (prevhaveTarget)	state++;
 		} else if (state==1){
 			if (distanceCurrentBox <= boxTouching ){
