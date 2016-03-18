@@ -140,7 +140,7 @@ public:
 		***			Camera Position
 		**************************************************************************************************/
 		//setCameraHomePos(Pos(0, 40, 10),  Pos(0, 0, 0)); // viewing full scene from side
-		setCameraHomePos(Pos(0, 2, 2),  Pos(0, 0, 0)); // normal
+		setCameraHomePos(Pos(0, 5, 5),  Pos(0, 0, 0)); // normal
 		//setCameraHomePos(Pos(0, 3, 3),  Pos(0, 0, 0)); // closer for screenshots
 		//setCameraHomePos(Pos(0, 20, 20),  Pos(0, 0, 0));
 
