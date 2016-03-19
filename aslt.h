@@ -33,9 +33,9 @@ public:
     	return aslt0;
     }
 
-	//seems to only do one layer per step, therefor the 5 steps
+	//seems to only do one layer per step, therefor 1 step per layer
     void allSteps(){
-    	step(); step(); step(); step();	step();
+    	step(); step(); step(); //step();	step();
     }
 
 private:

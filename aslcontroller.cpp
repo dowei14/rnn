@@ -157,7 +157,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 /********************************************************************************************
 *** Calculate triggers with NN
 ********************************************************************************************/
-/*
+
 	aslt->getASLT0()->setInput(  0 , prevMotorLeft);
 	aslt->getASLT0()->setInput(  1 , prevMotorRight);
 	aslt->getASLT0()->setInput(  2 , distanceCurrentBox);
@@ -168,11 +168,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	aslt->getASLT0()->setInput(  7 , irRightShort);
 	aslt->getASLT0()->setInput(  8 , irFront);
 	aslt->getASLT0()->setInput(  9 , touchGripper);
-	aslt->getASLT0()->setInput( 10 , boxGripped);									
+	aslt->getASLT0()->setInput( 10 , (double)boxGripped);									
 	aslt->allSteps();
+	//for (int i=0;i<11;i++) std::cout<<aslt->getASLT0()->getInput(i)<<" ";
+	//std::cout<<endl;
 	double val = aslt->getASLT0()->getOutput(16);	
-	cout<<abs(round(val))<<endl;
-*/
+	if(round(val)>0)cout<<val<<endl;
+	cout<<val<<endl;
+
 /********************************************************************************************/
 	
 	
@@ -208,15 +211,15 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	motorLeft = motors[0]; motorRight = motors[1]; 
 
 	// Store Values for training
-/*	if (!reset && runNumber>0 && counter>1) {
-		store();
-		storeTriggerBalance();
-		storeDecayBalance();
-		storebyState();
-		storeSingleTrigger(0);
-		storeSingleTrigger(1);
+	if (!reset && runNumber>0 && counter>1) {
+//		store();
+//		storeTriggerBalance();
+//		storeDecayBalance();
+//		storebyState();
+//		storeSingleTrigger(0);
+//		storeSingleTrigger(1);
 	}
-*/		
+		
 	counter++; // increase counter
 
 		
