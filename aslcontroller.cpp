@@ -15,8 +15,6 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 
 	// DSW
 	for (int i=0;i<number_ir_sensors;i++) irSmooth[i]=0;
-
-
 		
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
@@ -27,6 +25,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	done = false;
 	reset = false;
 	counter = 0;
+	
 	// parameters
 	boxTouching = 0.00115;
 	irFloorDistance = 0.5;
@@ -48,6 +47,9 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	addInspectableValue("parameter6", &parameter.at(5),"parameter6");
 	addInspectableValue("parameter7", &parameter.at(6),"parameter7");
 	addInspectableValue("parameter8", &parameter.at(7),"parameter8");	
+	
+	// trigger detection FF NN
+	aslt = new ASLT;
 	
 	// RNN
 	for (int i=0; i<8; i++){
@@ -89,8 +91,8 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	// sensor 3 = wheel velocity right hind
 
 	// sensors 4-9: IR Sensors
-	// sensor 4 = front middle right IR
-	// sensor 5 = front middle left IR
+	// sensor 4 = front middle IR
+	// sensor 5 = front middle top IR
 	// sensor 6 = front right long range IR
 	// sensor 7 = front left long range IR
 	// sensor 8 = front right short range IR
@@ -114,8 +116,8 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	calculateAnglePositionFromSensors(sensors);
 			
 	// smooth ir sensors
-	for (int i=0;i<number_ir_sensors;i++) irSmooth[i] += (sensors[4+i]-irSmooth[i])/smoothingFactor;
-//	for (int i=0;i<number_ir_sensors;i++) irSmooth[i] = sensors[4+i];
+//	for (int i=0;i<number_ir_sensors;i++) irSmooth[i] += (sensors[4+i]-irSmooth[i])/smoothingFactor;
+	for (int i=0;i<number_ir_sensors;i++) irSmooth[i] = sensors[4+i];
 
 
 
@@ -139,7 +141,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	irLeftShort = irSmooth[5];
 	irRightShort = irSmooth[4];
 	irFront = irSmooth[0];
-	if (irSmooth[1] > 0.995) touchGripper = 1.0;
+	if (irSmooth[0] > 0.89) touchGripper = 1.0;
 	else touchGripper = 0.0;
 	parameter.at(0) = irLeftLong;
 	parameter.at(1) = irRightLong;
@@ -151,13 +153,45 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	parameter.at(7) = angleCurrentBox;			
 
 	if (reset) resetParameters();
+
+/********************************************************************************************
+*** Calculate triggers with NN
+********************************************************************************************/
+/*
+	aslt->getASLT0()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT0()->setInput(  1 , prevMotorRight);
+	aslt->getASLT0()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT0()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT0()->setInput(  4 , irLeftLong);
+	aslt->getASLT0()->setInput(  5 , irRightLong);
+	aslt->getASLT0()->setInput(  6 , irLeftShort);
+	aslt->getASLT0()->setInput(  7 , irRightShort);
+	aslt->getASLT0()->setInput(  8 , irFront);
+	aslt->getASLT0()->setInput(  9 , touchGripper);
+	aslt->getASLT0()->setInput( 10 , boxGripped);									
+	aslt->allSteps();
+	double val = aslt->getASLT0()->getOutput(16);	
+	cout<<abs(round(val))<<endl;
+*/
+/********************************************************************************************/
+	
 	
 /********************************************************************************************
 *** run controller step
 ********************************************************************************************/	
 	rnnStep(motors);
-	
 //	fsmStep(motors);
+
+	// if there is no target set target sensors accordingly	
+	if (!haveTarget) { 
+		distanceCurrentBox = -1.0;
+		angleCurrentBox = 0.0;
+	}
+
+	executeAction(motors);
+
+
+
 
 
 	// capping motor speed at +- 1.0
@@ -173,15 +207,16 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	// store left and right motor values
 	motorLeft = motors[0]; motorRight = motors[1]; 
 
-	// Store Values 
-	if (!reset && runNumber>0 && counter>1) {
-		//store();
-		//storeTriggerBalance();
-		//storeDecayBalance();
-		//storebyState();
+	// Store Values for training
+/*	if (!reset && runNumber>0 && counter>1) {
+		store();
+		storeTriggerBalance();
+		storeDecayBalance();
+		storebyState();
 		storeSingleTrigger(0);
+		storeSingleTrigger(1);
 	}
-		
+*/		
 	counter++; // increase counter
 
 		
@@ -246,7 +281,7 @@ void ASLController::rnnStep(motor* motors){
 			}
 		} else if (state==2){
 			if ( motorLeft < -0.5 ){
-				if (distanceCurrentBox > boxTouching) {
+				if (touchGripper < 1){			
 					boxGripped = false;
 					haveTarget = false;
 					state = 0;
@@ -291,11 +326,7 @@ void ASLController::rnnStep(motor* motors){
 			runNumber++;
 		}
 		
-		// if there is no target set target sensors accordingly	
-		if (!haveTarget) { 
-			distanceCurrentBox = -1.0;
-			angleCurrentBox = 0.0;
-		}
+
 		/* print trigger and trigger decay for debuggin purposes
 		for (int i=0; i<7; i++) std::cout<<triggers[i]<<" ";
 		std::cout<<"____";
@@ -309,6 +340,8 @@ void ASLController::rnnStep(motor* motors){
 		}				
 		//for (int i=0; i<7; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
 		//std::cout<<endl;
+
+/* softmax
 		int max = 0;
 		float maxNum = 0;
 		for (int i=0; i<7; i++) {
@@ -316,26 +349,8 @@ void ASLController::rnnStep(motor* motors){
 				max = i; maxNum = neurons[i];
 			}
 		}
-		//if (state != max) std::cout<<state<<" "<<max<<endl;
-					
-		// execute action
-		if (state==0) {
-			getTargetAction = true;
-			setTarget(haveTarget);
-		} else if (state==1){
-			getTargetAction = false;
-			goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
-		} else if (state==2){
-			testBox(distanceCurrentBox,motors);
-		} else if (state==3){
-			moveToEdge(irLeftLong,irRightLong,motors);
-		} else if (state==4){
-			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors);
-		} else if (state==5){
-			dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
-		} else if (state==6){
-			crossGap(motors, crossGapCounter);
-		}
+		if (state != max) std::cout<<state<<" "<<max<<endl;					
+*/		
 	}
 }
 
@@ -353,7 +368,7 @@ void ASLController::fsmStep(motor* motors){
 			}
 		} else if (state==2){
 			if ( motorLeft < -0.5 ){
-				if (distanceCurrentBox > boxTouching) {
+				if (touchGripper < 1){	
 					boxGripped = false;
 					haveTarget = false;
 					prevhaveTarget = false;
@@ -384,31 +399,27 @@ void ASLController::fsmStep(motor* motors){
 			reset = true;
 			runNumber++;
 		}
-		
-		// if there is no target set target sensors accordingly	
-		if (!haveTarget) { 
-			distanceCurrentBox = -1.0;
-			angleCurrentBox = 0.0;
-		}	
-		
-		// execute action
-		if (state==0) {
-			getTargetAction = true;
-			setTarget(haveTarget);
-		} else if (state==1){
-			getTargetAction = false;
-			goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
-		} else if (state==2){
-			testBox(distanceCurrentBox,motors);
-		} else if (state==3){
-			moveToEdge(irLeftLong,irRightLong,motors);
-		} else if (state==4){
-			orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors);
-		} else if (state==5){
-			dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
-		} else if (state==6){
-			crossGap(motors, crossGapCounter);
-		}
+	}
+}
+
+void ASLController::executeAction(motor* motors){
+	// execute action
+	if (state==0) {
+		getTargetAction = true;
+		setTarget(haveTarget);
+	} else if (state==1){
+		getTargetAction = false;
+		goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
+	} else if (state==2){
+		testBox(distanceCurrentBox,motors);
+	} else if (state==3){
+		moveToEdge(irLeftLong,irRightLong,motors);
+	} else if (state==4){
+		orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors);
+	} else if (state==5){
+		dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
+	} else if (state==6){
+		crossGap(motors, crossGapCounter);
 	}
 }
 
@@ -439,7 +450,7 @@ bool ASLController::testBox(double boxDistance, motor* motors){
 	bool done = false;
 	// stop and accelerate backwards
 	if(motors[0] >0) speed = 0;
-	else speed = motors[0] - 0.01;
+	else speed = motors[0] - 0.005;
 	motors[0]=speed; motors[2] = speed;
 	motors[1]=speed; motors[3] = speed;
 	return done;
@@ -941,51 +952,22 @@ void ASLController::storebyState(){
 }
 
 void ASLController::storeSingleTrigger(int action){
+
+	// training data
 	int p = 0; // positive sample
 	if (triggers[action] > 0) p = 1;
 
 	// Open Files
-	std::string in18name = "../data/ST/" + std::to_string(action) + "/" + std::to_string(p) + "/in18.txt";
-	in18.open (in18name.c_str(), ios::app);
-	in18.precision(5);
-	in18<<fixed;
-	
-	std::string in11name = "../data/ST/" + std::to_string(action) + "/"  + std::to_string(p) + "/in11.txt";
+	std::string in11name = "../data/ST/" + std::to_string(action) + "/" + std::to_string(p) + "/in11.txt";
 	in11.open (in11name.c_str(), ios::app);
 	in11.precision(5);
 	in11<<fixed;
 	
-	std::string in12name = "../data/ST/" + std::to_string(action) + "/"  + std::to_string(p) + "/in12.txt";
-	in12.open (in12name.c_str(), ios::app);
-	in12.precision(5);
-	in12<<fixed;
-
 	std::string outTname = "../data/ST/" + std::to_string(action) + "/"  + std::to_string(p) + "/outT.txt";	
 	outT.open (outTname.c_str(), ios::app);
 	outT.precision(5);
 	outT<<fixed;
 	
-	// add binary states to in18 and out7
-	for (int i=0;i<7;i++){
-		if (i == prevState)	in18<<"1";
-		else in18<<"0";
-		in18<<" ";		
-	}
-
-	// add scalar state to in12 and out1
-	double multiplier = 0.1;
-	in12<<prevState*multiplier<<" ";
-	
-	// add sensor values to all input files 
-	in18<<prevMotorLeft<<" "<<prevMotorRight;	
-	in18<<" ";
-	in18<<distanceCurrentBox<<" "<<angleCurrentBox;
-	in18<<" ";
-	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-	in18<<" ";
-	if (boxGripped) in18<<"1";
-	else in18<<"0";
-	in18<<"\n";
 
 	in11<<prevMotorLeft<<" "<<prevMotorRight;	
 	in11<<" ";
@@ -996,24 +978,44 @@ void ASLController::storeSingleTrigger(int action){
 	if (boxGripped) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
-
-	in12<<prevMotorLeft<<" "<<prevMotorRight;	
-	in12<<" ";
-	in12<<distanceCurrentBox<<" "<<angleCurrentBox;
-	in12<<" ";
-	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
-	in12<<" ";
-	if (boxGripped) in12<<"1";
-	else in12<<"0";
-	in12<<"\n";
-	
 	
 	// add triggers to outT
 	outT<<triggers[action]<<" "<<"\n";
 
 	// close files	
   	in11.close();
-  	in12.close();	
-  	in18.close();	
 	outT.close();
+	
+	// testing data
+	p = 0; // positive sample
+	if (triggers[action] > 0) p = 1;
+
+	// Open Files
+	in11name = "../data/ST/" + std::to_string(action) + "/TEST/in11.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+	
+	outTname = "../data/ST/" + std::to_string(action) + "/TEST/outT.txt";	
+	outT.open (outTname.c_str(), ios::app);
+	outT.precision(5);
+	outT<<fixed;
+	
+
+	in11<<prevMotorLeft<<" "<<prevMotorRight;	
+	in11<<" ";
+	in11<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in11<<" ";
+	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in11<<" ";
+	if (boxGripped) in11<<"1";
+	else in11<<"0";
+	in11<<"\n";
+	
+	// add triggers to outT
+	outT<<triggers[action]<<" "<<"\n";
+
+	// close files	
+  	in11.close();
+	outT.close();	
 }

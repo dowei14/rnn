@@ -10,6 +10,7 @@
 #include <cmath> //pow sqrt
 #include <vector>
 #include <fstream>
+#include "aslt.h"
 
 
 /*********************************************************************
@@ -46,6 +47,9 @@ class ASLController : public AbstractController {
 	double angles [number_relative_sensors];
 	double irSmooth[number_ir_sensors];
 	double smoothingFactor;
+	
+	// trigger detection FF NN
+	ASLT* aslt;
 	
 	// new stuff for RNN
 	float triggers[7];
@@ -145,6 +149,7 @@ class ASLController : public AbstractController {
 	virtual void resetParameters();
 	virtual void fsmStep(motor* motors);
 	virtual void rnnStep(motor* motors);
+	virtual void executeAction(motor* motors);
 
 	// DSW return reset variable
 	virtual bool getReset() {
