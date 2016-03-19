@@ -58,13 +58,11 @@ class ASLController : public AbstractController {
 	float neuronsPrev[7];
 
     
-    // TODO: remove these, artifacts from previous iterations
-    bool done;
-    bool haveTarget;
-    int currentBox;
-    int state;
-    int dropBoxCounter;
-	int crossGapCounter;
+    // some globals used in functions
+    bool haveTarget; // does the robot know have a target box? might be removed later
+    int currentBox; // current target box
+    int state; // state of system 
+    int dropBoxCounter; //wait for robot to stand completly still before dropping the box
 
 
 	// for training
@@ -142,7 +140,7 @@ class ASLController : public AbstractController {
 	virtual void moveToEdge(double irLeft, double irRight, motor* motors);
 	virtual void orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors);
 	virtual void dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, motor* motors);
-	virtual void crossGap(motor* motors, int& crossGapCounter);
+	virtual void crossGap(motor* motors);
 
 	// Controller Steps
 	virtual void resetParameters();
