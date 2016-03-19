@@ -18,9 +18,8 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 		
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
-	haveTarget = true;
-	prevhaveTarget = false;
-	boxGripped = false;
+	haveTarget = false;
+	prevHaveTarget = false;
 	dropStuff = false;
 	done = false;
 	reset = false;
@@ -31,7 +30,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	irFloorDistance = 0.5;
 	irFrontClearDistance = 0.8;
 	smoothingFactor = 1.0;
-	state = -1;
+	state = 0;
 	runNumber = 0;
 	currentBox = 0;
 	prevMotorLeft = 0;
@@ -128,14 +127,19 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	prevMotorLeft = motors[0];
 	prevMotorRight = motors[1];
 	prevState = state;
-	prevhaveTarget = haveTarget;
+	prevHaveTarget = haveTarget;
 	
 /********************************************************************************************
 *** set up parameters
 ********************************************************************************************/
-
-	distanceCurrentBox = distances[currentBox];
-	angleCurrentBox = angles[currentBox];
+	// if there is no target set target sensors accordingly	
+	if (haveTarget) { 
+		distanceCurrentBox = distances[currentBox];
+		angleCurrentBox = angles[currentBox];
+	} else {
+		distanceCurrentBox = -1.0;
+		angleCurrentBox = 0.0;
+	}
 	irLeftLong = irSmooth[3];
 	irRightLong = irSmooth[2];
 	irLeftShort = irSmooth[5];
@@ -157,7 +161,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 /********************************************************************************************
 *** Calculate triggers with NN
 ********************************************************************************************/
-
+/*
 	aslt->getASLT0()->setInput(  0 , prevMotorLeft);
 	aslt->getASLT0()->setInput(  1 , prevMotorRight);
 	aslt->getASLT0()->setInput(  2 , distanceCurrentBox);
@@ -168,31 +172,39 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	aslt->getASLT0()->setInput(  7 , irRightShort);
 	aslt->getASLT0()->setInput(  8 , irFront);
 	aslt->getASLT0()->setInput(  9 , touchGripper);
-	aslt->getASLT0()->setInput( 10 , (double)boxGripped);									
+	aslt->getASLT0()->setInput( 10 , (double)haveTarget);									
 	aslt->allSteps();
 	//for (int i=0;i<11;i++) std::cout<<aslt->getASLT0()->getInput(i)<<" ";
 	//std::cout<<endl;
 	double val = aslt->getASLT0()->getOutput(16);	
 	if(round(val)>0)cout<<val<<endl;
 	cout<<val<<endl;
-
+*/
 /********************************************************************************************/
 	
 	
 /********************************************************************************************
 *** run controller step
 ********************************************************************************************/	
-	rnnStep(motors);
-//	fsmStep(motors);
-
-	// if there is no target set target sensors accordingly	
-	if (!haveTarget) { 
-		distanceCurrentBox = -1.0;
-		angleCurrentBox = 0.0;
+	if (!reset && (counter > 5)) {
+		rnnStep(motors);
+	//	fsmStep(motors);
+		
+	
+		executeAction(motors);
+		
+		// Store Values for training
+		if (runNumber>0) {
+	//		store();
+	//		storeTriggerBalance();
+	//		storeDecayBalance();
+	//		storebyState();
+	//		storeSingleTrigger(0);
+	//		storeSingleTrigger(1);
+		}
 	}
 
-	executeAction(motors);
-
+	counter++; // increase counter
 
 
 
@@ -210,17 +222,10 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	// store left and right motor values
 	motorLeft = motors[0]; motorRight = motors[1]; 
 
-	// Store Values for training
-	if (!reset && runNumber>0 && counter>1) {
-//		store();
-//		storeTriggerBalance();
-//		storeDecayBalance();
-//		storebyState();
-//		storeSingleTrigger(0);
-//		storeSingleTrigger(1);
-	}
+	
+
 		
-	counter++; // increase counter
+	
 
 		
 };
@@ -231,15 +236,14 @@ void ASLController::stepNoLearning(const sensor* , int number_sensors,motor* , i
 };
 
 void ASLController::resetParameters(){
-	haveTarget = true;
+	haveTarget = false;
 	distanceCurrentBox = -1.0;
-	angleCurrentBox = -1.0;
-	prevhaveTarget = false;
-	boxGripped = false;
+	angleCurrentBox = 0.0;
+	prevHaveTarget = false;
 	dropStuff = false;
 	dropBoxCounter = 0;
 	crossGapCounter = 0;
-	state = -1;
+	state = 0;
 	counter = 0;
 
 	// RNN reset
@@ -257,151 +261,131 @@ void ASLController::rnnStep(motor* motors){
 	/*********************
 	** Hand designed RNN
 	** ******************/
-	if (!reset && (counter > 1)) {
-		// create triggers
+	
+	// create triggers
 
-		// reset triggers to 0
-		for (int i=0; i<7; i++)	triggers[i] = 0;
+	// reset triggers to 0
+	for (int i=0; i<7; i++)	triggers[i] = 0;
 
-		// alternativelz slowly decay triggers
-		for (int i=0; i<7; i++)	triggersDecay[i] *= 0.8;
-		if (state==-1) {
-			haveTarget = false;
-			state = 0;
-			triggers[0] = 1.0;
-			triggersDecay[0] = 1.0;
-		} else if (state==0) {
-			if (haveTarget)	{
-				state++;
-				triggers[1] = 1.0;
-				triggersDecay[1] = 1.0;
-			}
-		} else if (state==1){
-			if (touchGripper){
-				state++;
-				triggers[2] = 1.0;
-				triggersDecay[2] = 1.0;
-			}
-		} else if (state==2){
-			if ( motorLeft < -0.5 ){
-				if (touchGripper < 1){			
-					boxGripped = false;
-					haveTarget = false;
-					state = 0;
-					triggers[0] = 1.0;
-					triggersDecay[0] = 1.0;
-				} else {
-					boxGripped = true;
-					state++;
-					triggers[3] = 1.0;
-					triggersDecay[3] = 1.0;
-				}	
-			}
-		} else if (state ==3){
-			if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
-				state++;
-				triggers[4] = 1.0;
-				triggersDecay[4] = 1.0;
-			}
-		} else if (state ==4){
-			if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
-				state++;
-				triggers[5] = 1.0;
-				triggersDecay[5] = 1.0;
-				motors[0]=0.0; motors[2] = 0.0;
-				motors[1]=0.0; motors[3] = 0.0;
-			}
-		} else if (state ==5){
-			if (irFront < irFrontClearDistance){		
-				boxGripped = false;
-				triggers[6] = 1.0;
-				triggersDecay[6] = 1.0;
-				state++;
-			}
-		} else if (state ==6){
-			if (irFront > irFrontClearDistance){
-				triggers[7] = 1;
-				triggersDecay[7] = 1.0;
-				state++;
-			}
-		} else {	
-			reset = true;
-			runNumber++;
+	// alternativelz slowly decay triggers
+	for (int i=0; i<7; i++)	triggersDecay[i] *= 0.8;
+	// start with states
+	if (state==0) {
+		if (haveTarget)	{
+			state++;
+			triggers[1] = 1.0;
+			triggersDecay[1] = 1.0;
 		}
-		
+	} else if (state==1){
+		if (touchGripper){
+			state++;
+			triggers[2] = 1.0;
+			triggersDecay[2] = 1.0;
+		}
+	} else if (state==2){
+		if ( motorLeft < -0.5 ){
+			if (touchGripper < 1){			
+				haveTarget = false;
+				state = 0;
+				triggers[0] = 1.0;
+				triggersDecay[0] = 1.0;
+			} else {
+				state++;
+				triggers[3] = 1.0;
+				triggersDecay[3] = 1.0;
+			}	
+		}
+	} else if (state ==3){
+		if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
+			state++;
+			triggers[4] = 1.0;
+			triggersDecay[4] = 1.0;
+		}
+	} else if (state ==4){
+		if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
+			state++;
+			triggers[5] = 1.0;
+			triggersDecay[5] = 1.0;
+		}
+	} else if (state ==5){
+		if (irFront < irFrontClearDistance){		
+			triggers[6] = 1.0;
+			triggersDecay[6] = 1.0;
+			state++;
+		}
+	} else if (state ==6){
+		if (irFront > irFrontClearDistance){
+			triggers[7] = 1;
+			triggersDecay[7] = 1.0;
+			state++;
+		}
+	} else {	
+		reset = true;
+		runNumber++;
+	}
+	
 
-		/* print trigger and trigger decay for debuggin purposes
-		for (int i=0; i<7; i++) std::cout<<triggers[i]<<" ";
-		std::cout<<"____";
-		for (int i=0; i<7; i++) std::cout<<triggersDecay[i]<<" ";
-		std::cout<<endl;
-		*/
-		
-		for (int i=0; i<7; i++){
-			neuronsPrev[i] = neurons[i];
-			neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
-		}				
-		//for (int i=0; i<7; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
-		//std::cout<<endl;
+	/* print trigger and trigger decay for debuggin purposes
+	for (int i=0; i<7; i++) std::cout<<triggers[i]<<" ";
+	std::cout<<"____";
+	for (int i=0; i<7; i++) std::cout<<triggersDecay[i]<<" ";
+	std::cout<<endl;
+	*/
+	
+	for (int i=0; i<7; i++){
+		neuronsPrev[i] = neurons[i];
+		neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
+	}				
+	//for (int i=0; i<7; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
+	//std::cout<<endl;
 
 /* softmax
-		int max = 0;
-		float maxNum = 0;
-		for (int i=0; i<7; i++) {
-			if (neurons[i]>maxNum){
-				max = i; maxNum = neurons[i];
-			}
+	int max = 0;
+	float maxNum = 0;
+	for (int i=0; i<7; i++) {
+		if (neurons[i]>maxNum){
+			max = i; maxNum = neurons[i];
 		}
-		if (state != max) std::cout<<state<<" "<<max<<endl;					
-*/		
 	}
+	if (state != max) std::cout<<state<<" "<<max<<endl;					
+*/		
+
 }
 
 void ASLController::fsmStep(motor* motors){
-	if (!reset &&(counter > 1)) {
-		// determine new state
-		if (state==-1) {
-			haveTarget = false;
-			state = 0;
-		} else if (state==0) {
-			if (prevhaveTarget)	state++;
-		} else if (state==1){
-			if (distanceCurrentBox <= boxTouching ){
-				state++;
-			}
-		} else if (state==2){
-			if ( motorLeft < -0.5 ){
-				if (touchGripper < 1){	
-					boxGripped = false;
-					haveTarget = false;
-					prevhaveTarget = false;
-					state = 0;
-				} else {
-					boxGripped = true;
-					state++;
-				}
-			}
-		} else if (state ==3){
-			if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) state++;
-		} else if (state ==4){
-			if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
-				state++;
-				motors[0]=0.0; motors[2] = 0.0;
-				motors[1]=0.0; motors[3] = 0.0;
-			}
-		} else if (state ==5){
-			if (irFront < irFrontClearDistance){		
-				boxGripped = false;
-				state++;
-			}
-		} else if (state ==6){
-			if (irFront > irFrontClearDistance){
-				state++;
-			}
-		} else {		
-			reset = true;
-			runNumber++;
+	// determine new state
+	if (state==0) {
+		if (haveTarget)	state++;
+	} else if (state==1){
+		if (distanceCurrentBox <= boxTouching ){
+			state++;
 		}
+	} else if (state==2){
+		if ( motorLeft < -0.5 ){
+			if (touchGripper < 1){	
+				haveTarget = false;
+				state = 0;
+			} else {
+				state++;
+			}
+		}
+	} else if (state ==3){
+		if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) state++;
+	} else if (state ==4){
+		if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
+			state++;
+		}
+	} else if (state ==5){
+		if (irFront < irFrontClearDistance){		
+			state++;
+		}
+	} else if (state ==6){
+		if (irFront > irFrontClearDistance){
+			state++;
+		}
+	} else {		
+		reset = true;
+		runNumber++;
 	}
 }
 
@@ -414,13 +398,13 @@ void ASLController::executeAction(motor* motors){
 		getTargetAction = false;
 		goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
 	} else if (state==2){
-		testBox(distanceCurrentBox,motors);
+		testBox(distanceCurrentBox,motors, haveTarget);
 	} else if (state==3){
 		moveToEdge(irLeftLong,irRightLong,motors);
 	} else if (state==4){
 		orientAtEdge(irLeftLong,irRightLong,irLeftShort,irRightShort,motors);
 	} else if (state==5){
-		dropBox(vehicle, dropBoxCounter, dropStuff, boxGripped);
+		dropBox(vehicle, dropBoxCounter, dropStuff,motors);
 	} else if (state==6){
 		crossGap(motors, crossGapCounter);
 	}
@@ -437,41 +421,36 @@ void ASLController::setTarget(bool& haveTarget){
 	haveTarget = true;
 }
 
-bool ASLController::goToRandomBox(double boxDistance, double boxAngle, motor* motors)
+void ASLController::goToRandomBox(double boxDistance, double boxAngle, motor* motors)
 {
 	double left,right;
-	bool done = false;
 	left = 0.5 + boxAngle;
 	right = 0.5 - boxAngle;
 	motors[0]=left; motors[2] = left;
 	motors[1]=right; motors[3] = right;
-	return done;
 }
 
-bool ASLController::testBox(double boxDistance, motor* motors){
+void ASLController::testBox(double boxDistance, motor* motors, bool& haveTarget){
 	double speed;
-	bool done = false;
+	haveTarget = false; // remove target
+	
 	// stop and accelerate backwards
 	if(motors[0] >0) speed = 0;
 	else speed = motors[0] - 0.005;
 	motors[0]=speed; motors[2] = speed;
 	motors[1]=speed; motors[3] = speed;
-	return done;
 }
 
-bool ASLController::moveToEdge(double irLeft, double irRight, motor* motors){
-	bool done = false;
+void ASLController::moveToEdge(double irLeft, double irRight, motor* motors){
 	double left,right;
 	
 	left = 0.3; right = 0.3;
 
 	motors[0]=left; motors[2] = left;
 	motors[1]=right; motors[3] = right;
-	return done;
 }
 
-bool ASLController::orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors){
-	bool done = false;
+void ASLController::orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors){
 	double left = 0.0;
 	double right = 0.0;
 	double threshold = 0.5;
@@ -492,12 +471,12 @@ bool ASLController::orientAtEdge(double irLeftLong, double irRightLong, double i
 
 	motors[0]=left; motors[2] = left;
 	motors[1]=right; motors[3] = right;
-	return done;
 }
 
-bool ASLController::dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, bool& isGripped){
-	bool done = false;	
-
+void ASLController::dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, motor* motors){
+	double speed = 0.0;
+	motors[0]=speed; motors[2] = speed;
+	motors[1]=speed; motors[3] = speed;
 	// the counter is for the robot to stop moving before dropping, otherwise it will fuck up from time to time
 	// TODO: replace this with a "sensor based option"
 	dropBoxCounter++;
@@ -505,15 +484,12 @@ bool ASLController::dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dro
 		dropStuff = true;
 		vehicle->removeGrippables(grippables);
 	}
-	return done;
 }
 
-bool ASLController::crossGap(motor* motors, int& crossGapCounter){
-	bool done = false;
+void ASLController::crossGap(motor* motors, int& crossGapCounter){
 	double speed = 0.5;
 	motors[0]=speed; motors[2] = speed;
 	motors[1]=speed; motors[3] = speed;
-	return done;
 }
 
 
@@ -629,7 +605,7 @@ void ASLController::store(){
 	in18<<" ";
 	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in18<<" ";
-	if (boxGripped) in18<<"1";
+	if (prevHaveTarget) in18<<"1";
 	else in18<<"0";
 	in18<<"\n";
 
@@ -639,7 +615,7 @@ void ASLController::store(){
 	in11<<" ";
 	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in11<<" ";
-	if (boxGripped) in11<<"1";
+	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
 
@@ -649,7 +625,7 @@ void ASLController::store(){
 	in12<<" ";
 	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in12<<" ";
-	if (boxGripped) in12<<"1";
+	if (prevHaveTarget) in12<<"1";
 	else in12<<"0";
 	in12<<"\n";
 	
@@ -721,7 +697,7 @@ void ASLController::storeTriggerBalance(){
 	in18<<" ";
 	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in18<<" ";
-	if (boxGripped) in18<<"1";
+	if (prevHaveTarget) in18<<"1";
 	else in18<<"0";
 	in18<<"\n";
 
@@ -731,7 +707,7 @@ void ASLController::storeTriggerBalance(){
 	in11<<" ";
 	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in11<<" ";
-	if (boxGripped) in11<<"1";
+	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
 
@@ -741,7 +717,7 @@ void ASLController::storeTriggerBalance(){
 	in12<<" ";
 	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in12<<" ";
-	if (boxGripped) in12<<"1";
+	if (prevHaveTarget) in12<<"1";
 	else in12<<"0";
 	in12<<"\n";
 	
@@ -805,7 +781,7 @@ void ASLController::storeDecayBalance(){
 	in18<<" ";
 	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in18<<" ";
-	if (boxGripped) in18<<"1";
+	if (prevHaveTarget) in18<<"1";
 	else in18<<"0";
 	in18<<"\n";
 
@@ -815,7 +791,7 @@ void ASLController::storeDecayBalance(){
 	in11<<" ";
 	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in11<<" ";
-	if (boxGripped) in11<<"1";
+	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
 
@@ -825,7 +801,7 @@ void ASLController::storeDecayBalance(){
 	in12<<" ";
 	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in12<<" ";
-	if (boxGripped) in12<<"1";
+	if (prevHaveTarget) in12<<"1";
 	else in12<<"0";
 	in12<<"\n";
 	
@@ -907,7 +883,7 @@ void ASLController::storebyState(){
 	in18<<" ";
 	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in18<<" ";
-	if (boxGripped) in18<<"1";
+	if (prevHaveTarget) in18<<"1";
 	else in18<<"0";
 	in18<<"\n";
 
@@ -917,7 +893,7 @@ void ASLController::storebyState(){
 	in11<<" ";
 	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in11<<" ";
-	if (boxGripped) in11<<"1";
+	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
 
@@ -927,7 +903,7 @@ void ASLController::storebyState(){
 	in12<<" ";
 	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in12<<" ";
-	if (boxGripped) in12<<"1";
+	if (prevHaveTarget) in12<<"1";
 	else in12<<"0";
 	in12<<"\n";
 	
@@ -978,7 +954,7 @@ void ASLController::storeSingleTrigger(int action){
 	in11<<" ";
 	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in11<<" ";
-	if (boxGripped) in11<<"1";
+	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
 	
@@ -1011,7 +987,7 @@ void ASLController::storeSingleTrigger(int action){
 	in11<<" ";
 	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
 	in11<<" ";
-	if (boxGripped) in11<<"1";
+	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
 	

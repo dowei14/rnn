@@ -63,7 +63,6 @@ class ASLController : public AbstractController {
     bool haveTarget;
     int currentBox;
     int state;
-    bool boxGripped;
     int dropBoxCounter;
 	int crossGapCounter;
 
@@ -73,7 +72,7 @@ class ASLController : public AbstractController {
 	double prevMotorRight;
 	double motorLeft;
 	double motorRight;
-	bool prevhaveTarget;
+	bool prevHaveTarget;
 	bool getTargetAction;
 	int prevState;
 	
@@ -138,12 +137,12 @@ class ASLController : public AbstractController {
 		
 	// Behaviours
 	virtual void setTarget(bool& haveTarget);
-	virtual bool goToRandomBox(double boxDistance, double boxAngle, motor* motors);
-	virtual bool testBox(double boxDistance, motor* motors);
-	virtual bool moveToEdge(double irLeft, double irRight, motor* motors);
-	virtual bool orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors);
-	virtual bool dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, bool& isGripped);
-	virtual bool crossGap(motor* motors, int& crossGapCounter);
+	virtual void goToRandomBox(double boxDistance, double boxAngle, motor* motors);
+	virtual void testBox(double boxDistance, motor* motors, bool& haveTarget);
+	virtual void moveToEdge(double irLeft, double irRight, motor* motors);
+	virtual void orientAtEdge(double irLeftLong, double irRightLong, double irLeftShort, double irRightShort, motor* motors);
+	virtual void dropBox(lpzrobots::FourWheeledRPosGripper* vehicle, int& dropBoxCounter, bool& dropStuff, motor* motors);
+	virtual void crossGap(motor* motors, int& crossGapCounter);
 
 	// Controller Steps
 	virtual void resetParameters();
