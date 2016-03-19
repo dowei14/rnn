@@ -55,6 +55,7 @@ class ASLController : public AbstractController {
 	float triggers[7];
 	float triggersDecay[7];
 	float neurons[7];
+	float weights[7];	
 	float neuronsPrev[7];
 
     
@@ -71,7 +72,6 @@ class ASLController : public AbstractController {
 	double motorLeft;
 	double motorRight;
 	bool prevHaveTarget;
-	bool getTargetAction;
 	int prevState;
 	
 	// files for storing

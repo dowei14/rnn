@@ -55,7 +55,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 		neurons[i] = 0.0;
 		neuronsPrev[i] = 0.0;
 	}
-
+	weights[0]=0.1;	weights[1]=1.0;	weights[2]=1.0;	weights[3]=0.1;	weights[4]=1.0;	weights[5]=0.1;	weights[6]=1.0;
 
 }
 
@@ -159,7 +159,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 /********************************************************************************************
 *** Calculate triggers with NN
 ********************************************************************************************/
-/*
+
 	aslt->getASLT0()->setInput(  0 , prevMotorLeft);
 	aslt->getASLT0()->setInput(  1 , prevMotorRight);
 	aslt->getASLT0()->setInput(  2 , distanceCurrentBox);
@@ -170,14 +170,91 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	aslt->getASLT0()->setInput(  7 , irRightShort);
 	aslt->getASLT0()->setInput(  8 , irFront);
 	aslt->getASLT0()->setInput(  9 , touchGripper);
-	aslt->getASLT0()->setInput( 10 , (double)haveTarget);									
+	aslt->getASLT0()->setInput( 10 , (double)prevHaveTarget);
+	aslt->getASLT1()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT1()->setInput(  1 , prevMotorRight);
+	aslt->getASLT1()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT1()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT1()->setInput(  4 , irLeftLong);
+	aslt->getASLT1()->setInput(  5 , irRightLong);
+	aslt->getASLT1()->setInput(  6 , irLeftShort);
+	aslt->getASLT1()->setInput(  7 , irRightShort);
+	aslt->getASLT1()->setInput(  8 , irFront);
+	aslt->getASLT1()->setInput(  9 , touchGripper);
+	aslt->getASLT1()->setInput( 10 , (double)prevHaveTarget);
+	aslt->getASLT2()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT2()->setInput(  1 , prevMotorRight);
+	aslt->getASLT2()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT2()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT2()->setInput(  4 , irLeftLong);
+	aslt->getASLT2()->setInput(  5 , irRightLong);
+	aslt->getASLT2()->setInput(  6 , irLeftShort);
+	aslt->getASLT2()->setInput(  7 , irRightShort);
+	aslt->getASLT2()->setInput(  8 , irFront);
+	aslt->getASLT2()->setInput(  9 , touchGripper);
+	aslt->getASLT2()->setInput( 10 , (double)prevHaveTarget);
+	aslt->getASLT3()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT3()->setInput(  1 , prevMotorRight);
+	aslt->getASLT3()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT3()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT3()->setInput(  4 , irLeftLong);
+	aslt->getASLT3()->setInput(  5 , irRightLong);
+	aslt->getASLT3()->setInput(  6 , irLeftShort);
+	aslt->getASLT3()->setInput(  7 , irRightShort);
+	aslt->getASLT3()->setInput(  8 , irFront);
+	aslt->getASLT3()->setInput(  9 , touchGripper);
+	aslt->getASLT3()->setInput( 10 , (double)prevHaveTarget);
+	aslt->getASLT4()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT4()->setInput(  1 , prevMotorRight);
+	aslt->getASLT4()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT4()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT4()->setInput(  4 , irLeftLong);
+	aslt->getASLT4()->setInput(  5 , irRightLong);
+	aslt->getASLT4()->setInput(  6 , irLeftShort);
+	aslt->getASLT4()->setInput(  7 , irRightShort);
+	aslt->getASLT4()->setInput(  8 , irFront);
+	aslt->getASLT4()->setInput(  9 , touchGripper);
+	aslt->getASLT4()->setInput( 10 , (double)prevHaveTarget);
+	aslt->getASLT5()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT5()->setInput(  1 , prevMotorRight);
+	aslt->getASLT5()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT5()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT5()->setInput(  4 , irLeftLong);
+	aslt->getASLT5()->setInput(  5 , irRightLong);
+	aslt->getASLT5()->setInput(  6 , irLeftShort);
+	aslt->getASLT5()->setInput(  7 , irRightShort);
+	aslt->getASLT5()->setInput(  8 , irFront);
+	aslt->getASLT5()->setInput(  9 , touchGripper);
+	aslt->getASLT5()->setInput( 10 , (double)prevHaveTarget);
+	aslt->getASLT6()->setInput(  0 , prevMotorLeft);
+	aslt->getASLT6()->setInput(  1 , prevMotorRight);
+	aslt->getASLT6()->setInput(  2 , distanceCurrentBox);
+	aslt->getASLT6()->setInput(  3 , angleCurrentBox);
+	aslt->getASLT6()->setInput(  4 , irLeftLong);
+	aslt->getASLT6()->setInput(  5 , irRightLong);
+	aslt->getASLT6()->setInput(  6 , irLeftShort);
+	aslt->getASLT6()->setInput(  7 , irRightShort);
+	aslt->getASLT6()->setInput(  8 , irFront);
+	aslt->getASLT6()->setInput(  9 , touchGripper);
+	aslt->getASLT6()->setInput( 10 , (double)prevHaveTarget);			
 	aslt->allSteps();
 	//for (int i=0;i<11;i++) std::cout<<aslt->getASLT0()->getInput(i)<<" ";
 	//std::cout<<endl;
-	double val = aslt->getASLT0()->getOutput(16);	
-	if(round(val)>0)cout<<val<<endl;
-	cout<<val<<endl;
-*/
+	double val0 = aslt->getASLT0()->getOutput(16);
+	double val1 = aslt->getASLT1()->getOutput(16);
+	double val2 = aslt->getASLT2()->getOutput(16);
+	double val3 = aslt->getASLT3()->getOutput(16);
+	double val4 = aslt->getASLT4()->getOutput(16);
+	double val5 = aslt->getASLT5()->getOutput(16);
+	double val6 = aslt->getASLT6()->getOutput(16);
+
+	for (int i=0; i<7; i++)	triggers[i] = 0;
+	if ((round(val0)>0) || (round(val1)>0) || (round(val2)>0) || (round(val3)>0) || (round(val4)>0) || (round(val5)>0) || (round(val6)>0)){
+		cout<<val0<<" "<<val1<<" "<<val2<<" "<<val3<<" "<<val4<<" "<<val5<<" "<<val6<<endl;
+		triggers[0]=val0;	triggers[1]=val1;	triggers[2]=val2;	triggers[3]=val3;	triggers[4]=val4;	triggers[5]=val5;	triggers[6]=val6;
+	}
+	//cout<<val<<endl;
+
 /********************************************************************************************/
 	
 	
@@ -193,12 +270,17 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		
 		// Store Values for training
 		if (runNumber>0) {
-			store();
-			storeTriggerBalance();
-			storeDecayBalance();
-			storebyState();
-			storeSingleTrigger(0);
-			storeSingleTrigger(1);
+//			store();
+//			storeTriggerBalance();
+//			storeDecayBalance();
+//			storebyState();
+//			storeSingleTrigger(0);
+//			storeSingleTrigger(1);
+//			storeSingleTrigger(2);
+//			storeSingleTrigger(3);
+//			storeSingleTrigger(4);						
+//			storeSingleTrigger(5);
+//			storeSingleTrigger(6);							
 		}
 	}
 
@@ -262,58 +344,61 @@ void ASLController::rnnStep(motor* motors){
 	// create triggers
 
 	// reset triggers to 0
-	for (int i=0; i<7; i++)	triggers[i] = 0;
+//	for (int i=0; i<7; i++)	triggers[i] = 0;
 
 	// alternativelz slowly decay triggers
 	for (int i=0; i<7; i++)	triggersDecay[i] *= 0.8;
 	
+	
+
+
 	// start with states
 	if (state==0) {
 		if (haveTarget)	{
 			state++;
-			triggers[1] = 1.0;
-			triggersDecay[1] = 1.0;
+//			triggers[1] = 1.0;
+//			triggersDecay[1] = 1.0;
 		}
 	} else if (state==1){
 		if (touchGripper){
 			state++;
-			triggers[2] = 1.0;
-			triggersDecay[2] = 1.0;
+//			triggers[2] = 1.0;
+//			triggersDecay[2] = 1.0;
 		}
 	} else if (state==2){
 		if ( motorLeft < -0.5 ){
 			if (touchGripper < 1){			
 				state = 0;
-				triggers[0] = 1.0;
-				triggersDecay[0] = 1.0;
+//				triggers[0] = 1.0;
+//				triggersDecay[0] = 1.0;
 			} else {
 				state++;
-				triggers[3] = 1.0;
-				triggersDecay[3] = 1.0;
+//				triggers[3] = 1.0;
+//				triggersDecay[3] = 1.0;
 			}	
 		}
 	} else if (state ==3){
 		if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
 			state++;
-			triggers[4] = 1.0;
-			triggersDecay[4] = 1.0;
+//			triggers[4] = 1.0;
+//			triggersDecay[4] = 1.0;
 		}
 	} else if (state ==4){
 		if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
 			state++;
-			triggers[5] = 1.0;
-			triggersDecay[5] = 1.0;
+//			triggers[5] = 1.0;
+//			triggersDecay[5] = 1.0;
 		}
 	} else if (state ==5){
 		if (irFront < irFrontClearDistance){		
-			triggers[6] = 1.0;
-			triggersDecay[6] = 1.0;
+//			triggers[6] = 1.0;
+//			triggersDecay[6] = 1.0;
 			state++;
 		}
 	} else if (state ==6){
 		if (irFront > irFrontClearDistance){
-			triggers[7] = 1;
-			triggersDecay[7] = 1.0;
+//			triggers[7] = 1;
+//			triggersDecay[7] = 1.0;
 			state++;
 		}
 	} else {	
@@ -328,15 +413,15 @@ void ASLController::rnnStep(motor* motors){
 	for (int i=0; i<7; i++) std::cout<<triggersDecay[i]<<" ";
 	std::cout<<endl;
 	*/
-	
+
 	for (int i=0; i<7; i++){
 		neuronsPrev[i] = neurons[i];
-		neurons[i] = neuronsPrev[i] * 0.99 + triggers[i];
+		neurons[i] = (neuronsPrev[i]) * 0.99 + (weights[i]*triggers[i]);
 	}				
 	//for (int i=0; i<7; i++) std::cout<< std::setprecision(1) <<neurons[i]<<" ";
 	//std::cout<<endl;
 
-/* softmax
+/* softmax*/
 	int max = 0;
 	float maxNum = 0;
 	for (int i=0; i<7; i++) {
@@ -345,7 +430,7 @@ void ASLController::rnnStep(motor* motors){
 		}
 	}
 	if (state != max) std::cout<<state<<" "<<max<<endl;					
-*/		
+		
 
 }
 
@@ -388,10 +473,8 @@ void ASLController::fsmStep(motor* motors){
 void ASLController::executeAction(motor* motors){
 	// execute action
 	if (state==0) {
-		getTargetAction = true;
 		setTarget(haveTarget);
 	} else if (state==1){
-		getTargetAction = false;
 		goToRandomBox(distanceCurrentBox,angleCurrentBox,motors);
 	} else if (state==2){
 		testBox(distanceCurrentBox,motors, haveTarget);
