@@ -52,11 +52,12 @@ class ASLController : public AbstractController {
 	ASLT* aslt;
 	
 	// new stuff for RNN
-	float triggers[7];
-	float triggersDecay[7];
-	float neurons[7];
-	float weights[7];	
-	float neuronsPrev[7];
+	float triggers[8];
+	float triggersDecay[8];
+	float neurons[8];
+	float weights[8];
+	float weightsRecurrent[8];	
+	float neuronsPrev[8];
 
     
     // some globals used in functions
@@ -144,6 +145,7 @@ class ASLController : public AbstractController {
 
 	// Controller Steps
 	virtual void resetParameters();
+	virtual void calcTriggers();
 	virtual void fsmStep(motor* motors);
 	virtual void rnnStep(motor* motors);
 	virtual void executeAction(motor* motors);
