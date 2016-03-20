@@ -54,7 +54,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 		neuronsPrev[i] = 0.0;
 		weightsRecurrent[i] = 0.99;
 	}
-	weights[0]=1.0;	weights[1]=1.0;	weights[2]=1.0;	weights[3]=0.1;	weights[4]=0.1;	weights[5]=0.2;	weights[6]=0.5;	weights[7]=0.1;
+	weights[0]=1.0;	weights[1]=1.0;	weights[2]=1.0;	weights[3]=0.1;	weights[4]=0.1;	weights[5]=0.1;	weights[6]=0.5;	weights[7]=0.1;
 
 }
 
