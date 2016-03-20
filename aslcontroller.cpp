@@ -164,7 +164,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		// Learned triggers + hand designed RNN
 		calcTriggers();
 		rnnStep(motors);
-	
+
 		// FSM to update state
 //		fsmStep(motors);
 		
@@ -232,7 +232,7 @@ void ASLController::resetParameters(){
 		neurons[i] = 0.0;
 		neuronsPrev[i] = 0.0;
 	}
-
+	neurons[0]=1.0;
 }
 
 /********************************************************************************************
