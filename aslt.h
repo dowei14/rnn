@@ -4,7 +4,7 @@
 #include "utils/ann-framework/ann.h"
 
 /************************************************
-*** Trigger 0 detection FF NN
+*** Trigger detection FF NN
 ************************************************/
 class ASLT0 : public ANN {
 public:
@@ -98,7 +98,8 @@ public:
     }   
   
 
-	//seems to only do one layer per step, therefor 1 step per layer
+	/* seems to only do one layer per step, therefor 1 step per layer
+	** only an issue when actually using the main network and not only subnets */	
     void allSteps(){
     	step(); //step(); step(); //step();	step();
     }

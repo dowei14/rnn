@@ -38,9 +38,10 @@
 // fetch all the stuff of lpzrobots into scope
 using namespace lpzrobots;
 
-
+// controller
 ASLController* qcontroller;
 
+// robot
 FourWheeledRPosGripper* vehicle;
 
 // relative_sensors
@@ -50,13 +51,16 @@ std::vector<AbstractObstacle*> relative_sensor_obst;
 Primitives grippables;
 Primitives boxPrimitives;
 
+// number of runs before stopping
 int runs = 10;
 
 
 class ThisSim : public Simulation {
 public:
 
-	// generate 3 goal boxes return Primitives(vector of Primitive*) of boxes to add to grippables
+	/********************************************************************************************
+	*** generate 3 goal boxes return Primitives(vector of Primitive*) of boxes to add to grippables
+	********************************************************************************************/
 	void generate_boxes(GlobalData& global)
 	{
 		double length = 1.38;
@@ -96,7 +100,9 @@ public:
 		
 	}	
 	
-	// set up Playground
+	/********************************************************************************************
+	*** set up Playground
+	********************************************************************************************/
 	void setup_Playground(GlobalData& global)
 	{
 
@@ -132,7 +138,9 @@ public:
   		global.obstacles.push_back(outer_playground2);
 	}
 
-	// starting function (executed once at the beginning of the simulation loop)
+	/********************************************************************************************
+	*** starting function (executed once at the beginning of the simulation loop)
+	********************************************************************************************/
 	void start(const OdeHandle& odeHandle, const OsgHandle& osgHandle, GlobalData& global)
 	{
 
@@ -208,8 +216,9 @@ public:
 
 	}
 
-
-	// starting function (executed once at the beginning of the simulation loop)
+	/********************************************************************************************
+	*** restart function
+	*******************************************************************************************/
 	virtual bool restart(const OdeHandle& odeHandle, const OsgHandle& osgHandle, GlobalData& global)
 	{
 

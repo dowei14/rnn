@@ -43,7 +43,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	addInspectableValue("parameter8", &parameter.at(7),"parameter8");	
 	
 	
-	// trigger detection FF NN
+	// Action-Sequence-Learning Trigger NN
 	aslt = new ASLT;
 	
 	// RNN
@@ -127,7 +127,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	prevHaveTarget = haveTarget;
 	
 /********************************************************************************************
-*** set up parameters
+*** set up sensors and parameters
 ********************************************************************************************/
 	// if there is no target set target sensors accordingly	
 	if (haveTarget) { 
@@ -153,15 +153,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	parameter.at(6) = distanceCurrentBox;	
 	parameter.at(7) = angleCurrentBox;			
 
-	if (reset) resetParameters();
-
-
-	
+	if (reset) resetParameters();	
 	
 /********************************************************************************************
 *** run controller step
 ********************************************************************************************/	
 	if (!reset && (counter > 5)) {
+		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
+		
 		// Learned triggers + hand designed RNN
 		calcTriggers();
 		rnnStep(motors);
@@ -200,7 +199,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 
 	/*** STOP FORREST
 	for (int i=0;i<4;i++) motors[i]=0.0; // stop robot
-	*************************/
+	*/
 
 	// store left and right motor values
 	motorLeft = motors[0]; motorRight = motors[1]; 	
@@ -213,7 +212,9 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 void ASLController::stepNoLearning(const sensor* , int number_sensors,motor* , int number_motors){
 	
 };
-
+/********************************************************************************************
+*** reset paramters after a simulation finished
+********************************************************************************************/
 void ASLController::resetParameters(){
 	haveTarget = false;
 	prevHaveTarget = false;
@@ -330,6 +331,7 @@ void ASLController::calcTriggers(){
 
 	// do FF step
 	aslt->allSteps();
+	
 	// store outputs
 	double val0 = aslt->getASLT0()->getOutput(16);
 	double val1 = aslt->getASLT1()->getOutput(16);
@@ -372,9 +374,11 @@ void ASLController::rnnStep(motor* motors){
 	state = max;
 }
 
+/********************************************************************************************
+*** Finite State Machine to determine next state
+*** triggers here are for training purposes, they are not used in the actual control
+********************************************************************************************/
 void ASLController::fsmStep(motor* motors){
-
-	// triggers here are for training purposes, they are not used in the actual control
 
 	// reset triggers to 0
 	for (int i=0; i<8; i++)	triggers[i] = 0;
@@ -434,6 +438,9 @@ void ASLController::fsmStep(motor* motors){
 	} 
 }
 
+/********************************************************************************************
+*** execute action based on state
+********************************************************************************************/
 void ASLController::executeAction(motor* motors){
 	// execute action
 	if (state==0) {
@@ -451,9 +458,11 @@ void ASLController::executeAction(motor* motors){
 	} else if (state==6){
 		crossGap(motors);
 	} else if (state==7){
-		reset = true;
-		runNumber++;
-		state++;
+		if (counter > 100){
+			reset = true;
+			runNumber++;
+			state++;
+		}
 	}
 }
 

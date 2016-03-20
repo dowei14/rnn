@@ -34,9 +34,23 @@ class ASLController : public AbstractController {
     //Define global parameters-begin//
     std::vector<double> parameter;
 
-	// DSW reset variable
-	bool reset;
+	// sensor values
+	double distanceCurrentBox, angleCurrentBox;
+	double irLeftLong, irRightLong, irLeftShort, irRightShort;
+	double irFront,touchGripper;
 
+	// parameters
+	bool reset;
+	int runNumber;
+	int counter;
+	double boxTouching;
+	double irFloorDistance;
+	double irFrontClearDistance;
+    bool haveTarget; // does the robot know have a target box? might be removed later
+    int currentBox; // current target box
+    int state; // state of system 
+    int dropBoxCounter; //wait for robot to stand completly still before dropping the box
+	
 	// DSW removeTmpObjects for gripper removal in callback
 	bool dropStuff;
 
@@ -51,21 +65,13 @@ class ASLController : public AbstractController {
 	// trigger detection FF NN
 	ASLT* aslt;
 	
-	// new stuff for RNN
+	// RNN
 	float triggers[8];
 	float triggersDecay[8];
 	float neurons[8];
 	float weights[8];
 	float weightsRecurrent[8];	
 	float neuronsPrev[8];
-
-    
-    // some globals used in functions
-    bool haveTarget; // does the robot know have a target box? might be removed later
-    int currentBox; // current target box
-    int state; // state of system 
-    int dropBoxCounter; //wait for robot to stand completly still before dropping the box
-
 
 	// for training
 	double prevMotorLeft;
@@ -83,18 +89,7 @@ class ASLController : public AbstractController {
 	std::ofstream out7;
 	std::ofstream outT;
 	std::ofstream outD;
-
-	int runNumber;
-	int counter;
 	
-	// sensor values
-	double distanceCurrentBox, angleCurrentBox;
-	double irLeftLong, irRightLong, irLeftShort, irRightShort;
-	double irFront,touchGripper;
-	// parameters
-	double boxTouching;
-	double irFloorDistance;
-	double irFrontClearDistance;
 	
     //Define global parameters-end//
 
@@ -130,7 +125,7 @@ class ASLController : public AbstractController {
 	// pass grippables and vehicle
 	virtual void setGrippablesAndVehicle(lpzrobots::FourWheeledRPosGripper* vehicleIn, std::vector<lpzrobots::Primitive*> grippablesIn);
 
-	// DSW Sensors to angle/distance functions
+	// Sensors to angle/distance functions
 	virtual void calculateDistanceToGoals(const sensor* x_);
 	virtual void calculateAnglePositionFromSensors(const sensor* x_);
 		
