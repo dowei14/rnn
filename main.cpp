@@ -198,7 +198,7 @@ public:
 		/****Initial position of Nimm4******/
     	Pos pos(0.0 , 0.0 , 1.0);
     	//setting position and orientation
-    	vehicle->place(osg::Matrix::rotate(0, 0, 0, 1) *osg::Matrix::translate(pos));
+    	vehicle->place(osg::Matrix::rotate(-1.0, 0, 0, 1) *osg::Matrix::translate(pos));
 		
 		qcontroller = new ASLController("1","1");
 		qcontroller->setGrippablesAndVehicle(vehicle,grippables);
@@ -288,7 +288,7 @@ public:
 		/****Initial position of Nimm4******/
     	Pos pos(0.0 , 0.0 , 1.0);
     	//setting position and orientation
-    	vehicle->place(osg::Matrix::rotate(0, 0, 0, 1) *osg::Matrix::translate(pos));
+    	vehicle->place(osg::Matrix::rotate(-1.0, 0, 0, 1) *osg::Matrix::translate(pos));
 		
 		// only set new grippables otherwise keep old controller
 		qcontroller->setGrippablesAndVehicle(vehicle,grippables);
