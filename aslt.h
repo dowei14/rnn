@@ -48,6 +48,13 @@ public:
     Neuron* getNeuronOutput();
 };
 
+class ASLT7 : public ANN {
+public:
+    ASLT7();
+    Neuron* getNeuronOutput();
+};
+
+
 /************************************************
 *** Accumulation of all FF NN
 ************************************************/
@@ -86,6 +93,9 @@ public:
     ASLT6* getASLT6(){
     	return aslt6;
     }    
+    ASLT7* getASLT7(){
+    	return aslt7;
+    }   
   
 
 	//seems to only do one layer per step, therefor 1 step per layer
@@ -101,6 +111,7 @@ private:
 	ASLT4*  aslt4;
 	ASLT5*  aslt5;
 	ASLT6*  aslt6;					
+	ASLT7*  aslt7;		
 	std::vector<Neuron*> inputNeurons;
 	std::vector<Neuron*> outputNeurons;
 };
