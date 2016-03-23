@@ -49,7 +49,6 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	// RNN
 	for (int i=0; i<8; i++){
 		triggers[i] = 0.0;
-		triggersDecay[i] = 0.0;
 		neurons[i] = 0.0;
 		neuronsPrev[i] = 0.0;
 		weightsRecurrent[i] = 0.99;
@@ -162,20 +161,20 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
 		
 		// Learned triggers + hand designed RNN
-		calcTriggers();
-		rnnStep(motors);
+//		calcTriggers();
+//		rnnStep(motors);
 
 		// FSM to update state
-//		fsmStep(motors);
+		fsmStep(motors);
 		
 		// execute action based on current state of the system
 		executeAction(motors);
 		
 		// Store Values for training
-//		if (runNumber>0) {
+		if (runNumber>0) {
 //			store();
 //			storeTriggerBalance();
-//			storeDecayBalance();
+//			storeTransitionBalance();
 //			storebyState();
 //			storeSingleTrigger(0);
 //			storeSingleTrigger(1);
@@ -185,7 +184,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 //			storeSingleTrigger(5);
 //			storeSingleTrigger(6);							
 //			storeSingleTrigger(7);
-//		}
+		}
 	}
 	counter++; // increase counter
 
@@ -228,7 +227,6 @@ void ASLController::resetParameters(){
 	// RNN reset
 	for (int i=0; i<8; i++){
 		triggers[i] = 0.0;
-		triggersDecay[i] = 0.0;
 		neurons[i] = 0.0;
 		neuronsPrev[i] = 0.0;
 	}
@@ -383,56 +381,45 @@ void ASLController::fsmStep(motor* motors){
 	// reset triggers to 0
 	for (int i=0; i<8; i++)	triggers[i] = 0;
 
-	// alternativelz slowly decay triggers
-	for (int i=0; i<8; i++)	triggersDecay[i] *= 0.8;
-
 	// determine new state based on previous state and sensor values (FSM)
 	if (state==0) {
 		if (haveTarget)	{
 			state++;
 			triggers[1] = 1.0;
-			triggersDecay[1] = 1.0;
 		}
 	} else if (state==1){
 		if (touchGripper){
 			state++;
 			triggers[2] = 1.0;
-			triggersDecay[2] = 1.0;
 		}
 	} else if (state==2){
 		if ( motorLeft < -0.5 ){
 			if (touchGripper < 1){			
 				state = 0;
 				triggers[0] = 1.0;
-				triggersDecay[0] = 1.0;
 			} else {
 				state++;
 				triggers[3] = 1.0;
-				triggersDecay[3] = 1.0;
 			}	
 		}
 	} else if (state ==3){
 		if (irLeftLong < irFloorDistance || irRightLong < irFloorDistance) {
 			state++;
 			triggers[4] = 1.0;
-			triggersDecay[4] = 1.0;
 		}
 	} else if (state ==4){
 		if ((irLeftLong < irFloorDistance) && (irRightLong < irFloorDistance) && ((irLeftShort > irFloorDistance) || (irRightShort > irFloorDistance))) {
 			state++;
 			triggers[5] = 1.0;
-			triggersDecay[5] = 1.0;
 		}
 	} else if (state ==5){
 		if (irFront < irFrontClearDistance){		
 			triggers[6] = 1.0;
-			triggersDecay[6] = 1.0;
 			state++;
 		}
 	} else if (state ==6){
 		if (irFront > irFrontClearDistance){
 			triggers[7] = 1;
-			triggersDecay[7] = 1.0;
 			state++;
 		}
 	} 
@@ -460,7 +447,7 @@ void ASLController::executeAction(motor* motors){
 	} else if (state==7){
 		reset = true;
 		runNumber++;
-		state++;
+		state=0;
 	}
 }
 
@@ -593,11 +580,11 @@ void ASLController::calculateAnglePositionFromSensors(const sensor* x_)
 /*****************************************************************************************
 *** Storing function used to create datasets
 ***
-*** 	store 				-> standard without any seperation of data
-*** 	storeTriggerBalance	-> seperates by trigger into + and - samples 
-*** 	storeDecayBalance	-> seperates by decay into + and - samples
-***		storebyState		-> seperates by state
-***		storeSingleTrigger	-> the output is a single scalar, seperated in trainig and test set
+*** 	store 					-> standard without any seperation of data
+*** 	storeTriggerBalance		-> seperates by trigger into + and - samples 
+*** 	storeTransitionBalance	-> seperates by transitions into + and - samples
+***		storebyState			-> seperates by state
+***		storeSingleTrigger		-> the output is a single scalar, seperated in trainig and test set
 *****************************************************************************************/
 void ASLController::store(){
 	// Open Files
@@ -631,12 +618,6 @@ void ASLController::store(){
 	outT.precision(5);
 	outT<<fixed;
 	
-	std::string outDname = "../data/outD.txt";	
-	outD.open (outDname.c_str(), ios::app);
-	outD.precision(5);
-	outD<<fixed;
-
-
 	// add binary states to in18 and out7
 	for (int i=0;i<7;i++){
 		if (i == prevState)	in18<<"1";
@@ -692,11 +673,6 @@ void ASLController::store(){
 	}
 	outT<<"\n";
 
-	// add decay to outD
-	for (int i=0; i<7; i++) {
-		outD<<triggersDecay[i]<<" ";
-	}
-	outD<<"\n";
 	
 	// close files	
   	in11.close();
@@ -705,7 +681,6 @@ void ASLController::store(){
 	out1.close();
 	out7.close();
 	outT.close();
-	outD.close();
 }
 
 void ASLController::storeTriggerBalance(){
@@ -792,38 +767,41 @@ void ASLController::storeTriggerBalance(){
 }
 
 
-void ASLController::storeDecayBalance(){
+void ASLController::storeTransitionBalance(){
+	// training data
 	int p = 0; // positive sample
-	for (int i=0; i<7; i++) {
-		if (triggersDecay[i] > 0.01) p = 1;
-	}
-
+	if (state != prevState) p =1;
 	// Open Files
-	std::string in18name = "../data/D/" + std::to_string(p) + "/in18.txt";
+	std::string in11name = "../data/TRANS/" + std::to_string(p) + "/in11.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	std::string in12name = "../data/TRANS/" + std::to_string(p) + "/in12.txt";
+	in12.open (in12name.c_str(), ios::app);
+	in12.precision(5);
+	in12<<fixed;
+	
+	std::string in18name = "../data/TRANS/" + std::to_string(p) + "/in18.txt";
 	in18.open (in18name.c_str(), ios::app);
 	in18.precision(5);
 	in18<<fixed;
 	
-	std::string in11name = "../data/D/" + std::to_string(p) + "/in11.txt";
-	in11.open (in11name.c_str(), ios::app);
-	in11.precision(5);
-	in11<<fixed;
-	
-	std::string in12name = "../data/D/" + std::to_string(p) + "/in12.txt";
-	in12.open (in12name.c_str(), ios::app);
-	in12.precision(5);
-	in12<<fixed;
-
-	std::string outDname = "../data/D/" + std::to_string(p) + "/outD.txt";	
-	outD.open (outDname.c_str(), ios::app);
-	outD.precision(5);
-	outD<<fixed;
+	std::string out7name = "../data/TRANS/" + std::to_string(p) + "/out7.txt";	
+	out7.open (out7name.c_str(), ios::app);
+	out7.precision(5);
+	out7<<fixed;
 	
 	// add binary states to in18 and out7
 	for (int i=0;i<7;i++){
 		if (i == prevState)	in18<<"1";
 		else in18<<"0";
-		in18<<" ";		
+		in18<<" ";
+	
+		if (i == state)	out7<<"1";
+		else out7<<"0";
+		if (i<6) out7<<" ";
+		if (i==6) out7<<"\n";		
 	}
 
 	// add scalar state to in12 and out1
@@ -839,7 +817,17 @@ void ASLController::storeDecayBalance(){
 	in18<<" ";
 	if (prevHaveTarget) in18<<"1";
 	else in18<<"0";
-	in18<<"\n";
+	in18<<"\n";	
+	
+	in12<<prevMotorLeft<<" "<<prevMotorRight;	
+	in12<<" ";
+	in12<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in12<<" ";
+	in12<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in12<<" ";
+	if (prevHaveTarget) in12<<"1";
+	else in12<<"0";
+	in12<<"\n";	
 
 	in11<<prevMotorLeft<<" "<<prevMotorRight;	
 	in11<<" ";
@@ -850,7 +838,64 @@ void ASLController::storeDecayBalance(){
 	if (prevHaveTarget) in11<<"1";
 	else in11<<"0";
 	in11<<"\n";
+	
 
+	// close files
+  	in18.close();  	
+  	in12.close();   		
+  	in11.close();
+	out7.close();
+	
+	// testing data
+	p = 0; // positive sample
+	if (state != prevState) p =1;
+
+	// Open Files
+	in11name = "../data/TRANS/TEST/in11.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+	
+	in12name = "../data/TRANS/TEST/in12.txt";
+	in12.open (in12name.c_str(), ios::app);
+	in12.precision(5);
+	in12<<fixed;
+	
+	in18name = "../data/TRANS/TEST/in18.txt";
+	in18.open (in18name.c_str(), ios::app);
+	in18.precision(5);
+	in18<<fixed;	
+	
+	out7name = "../data/TRANS/TEST/out7.txt";	
+	out7.open (out7name.c_str(), ios::app);
+	out7.precision(5);
+	out7<<fixed;
+
+	// add binary states to in18 and out7
+	for (int i=0;i<7;i++){
+		if (i == prevState)	in18<<"1";
+		else in18<<"0";
+		in18<<" ";
+	
+		if (i == state)	out7<<"1";
+		else out7<<"0";
+		if (i<6) out7<<" ";
+		if (i==6) out7<<"\n";		
+	}
+
+	// add scalar state to in12 and out1
+	in12<<prevState*multiplier<<" ";
+		
+	in18<<prevMotorLeft<<" "<<prevMotorRight;	
+	in18<<" ";
+	in18<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in18<<" ";
+	in18<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in18<<" ";
+	if (prevHaveTarget) in18<<"1";
+	else in18<<"0";
+	in18<<"\n";	
+	
 	in12<<prevMotorLeft<<" "<<prevMotorRight;	
 	in12<<" ";
 	in12<<distanceCurrentBox<<" "<<angleCurrentBox;
@@ -859,20 +904,24 @@ void ASLController::storeDecayBalance(){
 	in12<<" ";
 	if (prevHaveTarget) in12<<"1";
 	else in12<<"0";
-	in12<<"\n";
+	in12<<"\n";	
 	
+	in11<<prevMotorLeft<<" "<<prevMotorRight;	
+	in11<<" ";
+	in11<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in11<<" ";
+	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in11<<" ";
+	if (prevHaveTarget) in11<<"1";
+	else in11<<"0";
+	in11<<"\n";
 	
-	// add decay to outD
-	for (int i=0; i<7; i++) {
-		outD<<triggersDecay[i]<<" ";
-	}
-	outD<<"\n";
 
 	// close files	
+  	in18.close();  	
+  	in12.close();   	
   	in11.close();
-  	in12.close();	
-  	in18.close();	
-	outD.close();
+	out7.close();	
 }
 
 
@@ -909,12 +958,6 @@ void ASLController::storebyState(){
 	outT.precision(5);
 	outT<<fixed;
 	
-	std::string outDname = "../data/S/" + std::to_string(prevState) + "/outD.txt";	
-	outD.open (outDname.c_str(), ios::app);
-	outD.precision(5);
-	outD<<fixed;
-
-
 	// add binary states to in18 and out7
 	for (int i=0;i<7;i++){
 		if (i == prevState)	in18<<"1";
@@ -970,12 +1013,6 @@ void ASLController::storebyState(){
 	}
 	outT<<"\n";
 
-	// add decay to outD
-	for (int i=0; i<7; i++) {
-		outD<<triggersDecay[i]<<" ";
-	}
-	outD<<"\n";
-	
 	// close files	
   	in11.close();
   	in12.close();	
@@ -983,7 +1020,6 @@ void ASLController::storebyState(){
 	out1.close();
 	out7.close();
 	outT.close();
-	outD.close();
 }
 
 void ASLController::storeSingleTrigger(int action){

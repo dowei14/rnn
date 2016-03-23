@@ -67,7 +67,6 @@ class ASLController : public AbstractController {
 	
 	// RNN
 	float triggers[8];
-	float triggersDecay[8];
 	float neurons[8];
 	float weights[8];
 	float weightsRecurrent[8];	
@@ -88,7 +87,6 @@ class ASLController : public AbstractController {
 	std::ofstream out1;
 	std::ofstream out7;
 	std::ofstream outT;
-	std::ofstream outD;
 	
 	
     //Define global parameters-end//
@@ -175,7 +173,7 @@ class ASLController : public AbstractController {
     // store Data for learning
     virtual void store();
     virtual void storeTriggerBalance();
-	virtual void storeDecayBalance();    
+	virtual void storeTransitionBalance();    
     virtual void storebyState();
     virtual void storeSingleTrigger(int action);
 
