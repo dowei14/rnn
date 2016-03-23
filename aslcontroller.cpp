@@ -160,12 +160,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	if (!reset && (counter > 5)) {
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
 		
-		// Learned triggers + hand designed RNN
-//		calcTriggers();
-//		rnnStep(motors);
-
 		// FSM to update state
-		fsmStep(motors);
+//		fsmStep(motors);
+//		storeTriggerAccuracy(false);
+		
+		// Learned triggers + hand designed RNN
+		calcTriggers();
+		rnnStep(motors);
+//		storeTriggerAccuracy(true);
 		
 		// execute action based on current state of the system
 		executeAction(motors);
@@ -1173,4 +1175,23 @@ void ASLController::storeSingleTrigger(int action){
   	in12.close();   	
   	in11.close();
 	outT.close();	
+}
+
+void ASLController::storeTriggerAccuracy(bool fsm){
+
+	std::string in11name;
+	if (fsm) in11name = "../data/TriggerAccuracy/predicted.txt";
+	else in11name = "../data/TriggerAccuracy/actual.txt"; 
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<7; i++) {
+		in11<<triggers[i]<<" ";
+	}
+	in11<<"\n";
+
+	// close files	
+  	in11.close();
 }

@@ -176,6 +176,7 @@ class ASLController : public AbstractController {
 	virtual void storeTransitionBalance();    
     virtual void storebyState();
     virtual void storeSingleTrigger(int action);
+    virtual void storeTriggerAccuracy(bool fsm);
 
   protected:
 
