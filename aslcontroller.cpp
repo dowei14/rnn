@@ -168,7 +168,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		// Learned triggers + hand designed RNN
 		calcTriggers();
 		rnnStep(motors);
-		storeRNN();
+//		storeRNN();
 //		storeTriggerAccuracy(true);
 		
 		// execute action based on current state of the system
@@ -463,10 +463,15 @@ void ASLController::executeAction(motor* motors){
 *** Behaviours
 *****************************************************************************************/
 void ASLController::setTarget(bool& haveTarget){
-	std::random_device rd; // obtain a random number from hardware
-	std::mt19937 eng(rd()); // seed the generator
-	std::uniform_int_distribution<> distr(0, 2); // define the range
-	currentBox = distr(eng);
+	// aint nobody got time for dat
+	if (counter < 4000){
+		std::random_device rd; // obtain a random number from hardware
+		std::mt19937 eng(rd()); // seed the generator
+		std::uniform_int_distribution<> distr(0, 2); // define the range
+		currentBox = distr(eng);
+	} else {
+		currentBox = 0;
+	}	
 	haveTarget = true;
 //	cout<<"getting new Target: "<<currentBox<<endl;
 }
