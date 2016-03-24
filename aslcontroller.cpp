@@ -1,5 +1,6 @@
 #include "aslcontroller.h"
 #include <iomanip>
+#include <math.h>  //exp for softmax
 /**
  * Action-Sequence-Learning Controller for 
  * FourWheeldRPos_Gripper(Nimm4 with added sensors and gripper)
@@ -167,6 +168,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		// Learned triggers + hand designed RNN
 		calcTriggers();
 		rnnStep(motors);
+		storeRNN();
 //		storeTriggerAccuracy(true);
 		
 		// execute action based on current state of the system
@@ -372,6 +374,10 @@ void ASLController::rnnStep(motor* motors){
 		}
 	}
 	state = max;
+	
+	double sum = 0.0;;
+	for (int i=0; i<8; i++) sum += exp(neurons[i]);
+	for (int i=0; i<8; i++) softMax[i] = exp(neurons[i]) / sum;
 }
 
 /********************************************************************************************
@@ -1194,4 +1200,66 @@ void ASLController::storeTriggerAccuracy(bool fsm){
 
 	// close files	
   	in11.close();
+}
+
+void ASLController::storeRNN(){
+
+	std::string in11name = "../data/RNN/triggers.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<8; i++) {
+		in11<<triggers[i]<<" ";
+	}
+	in11<<"\n";
+
+	// close files	
+  	in11.close();
+  	
+  	
+	std::string in12name = "../data/RNN/neurons.txt";
+	in12.open (in12name.c_str(), ios::app);
+	in12.precision(5);
+	in12<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<8; i++) {
+		in12<<neurons[i]<<" ";
+	}
+	in12<<"\n";
+
+	// close files	
+  	in12.close();
+  	
+	std::string in18name = "../data/RNN/action.txt";
+	in18.open (in18name.c_str(), ios::app);
+	in18.precision(5);
+	in18<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<8; i++) {
+		if (i == state)	in18<<"1";
+		else in18<<"0";
+		if (i<7) in18<<" ";
+	}
+	in18<<"\n";
+
+	// close files	
+  	in18.close();  	
+  	
+	std::string out1name = "../data/RNN/softmax.txt";
+	out1.open (out1name.c_str(), ios::app);
+	out1.precision(5);
+	out1<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<8; i++) {
+		out1<<softMax[i]<<" ";
+	}
+	out1<<"\n";
+
+	// close files	
+  	out1.close(); 
 }

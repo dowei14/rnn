@@ -71,6 +71,7 @@ class ASLController : public AbstractController {
 	float weights[8];
 	float weightsRecurrent[8];	
 	float neuronsPrev[8];
+	float softMax[8];	
 
 	// for training
 	double prevMotorLeft;
@@ -177,6 +178,7 @@ class ASLController : public AbstractController {
     virtual void storebyState();
     virtual void storeSingleTrigger(int action);
     virtual void storeTriggerAccuracy(bool fsm);
+    virtual void storeRNN();    
 
   protected:
 
