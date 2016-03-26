@@ -162,12 +162,13 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
 		
 		// FSM to update state
-//		fsmStep(motors);
+		fsmStep(motors);
 //		storeTriggerAccuracy(false);
 		
 		// Learned triggers + hand designed RNN
-		calcTriggers();
-		rnnStep(motors);
+//		calcTriggers();
+//		rnnStep(motors);
+		storeLSTMTrain();
 //		storeRNN();
 //		storeTriggerAccuracy(true);
 		
@@ -1267,4 +1268,50 @@ void ASLController::storeRNN(){
 
 	// close files	
   	out1.close(); 
+}
+
+void ASLController::storeLSTMTrain(){
+
+	std::string in11name = "../data/LSTMTrain/" + std::to_string(runNumber) + "sensors.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	in11<<prevMotorLeft<<" "<<prevMotorRight;	
+	in11<<" ";
+	in11<<distanceCurrentBox<<" "<<angleCurrentBox;
+	in11<<" ";
+	in11<<irLeftLong<<" "<<irRightLong<<" "<<irLeftShort<<" "<<irRightShort<<" "<<irFront<<" "<<touchGripper;
+	in11<<" ";
+	if (prevHaveTarget) in11<<"1";
+	else in11<<"0";
+	in11<<"\n";
+
+	// close files	
+  	in11.close();
+  	
+	in11name = "../data/LSTMTrain/" + std::to_string(runNumber) + "triggerOut.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<8; i++) {
+		in11<<triggers[i]<<" ";
+	}
+	in11<<"\n";
+
+	// close files	
+  	in11.close();
+  	
+	in11name = "../data/LSTMTrain/" + std::to_string(runNumber) + "class.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	in11<<state<<"\n";
+
+	// close files	
+  	in11.close();
+ 
 }
