@@ -221,7 +221,7 @@ public:
 	*******************************************************************************************/
 	virtual bool restart(const OdeHandle& odeHandle, const OsgHandle& osgHandle, GlobalData& global)
 	{
-
+		if (currentCycle >= runs) return false;
 		std::cout << "\n begin restart " << currentCycle << "\n";
 
 		std::cout<<"Current Cycle"<<this->currentCycle<<std::endl;
@@ -309,8 +309,8 @@ public:
 
 		qcontroller->setReset(false);
 
-		if (currentCycle < runs) return true;
-		else return false;
+		return true;
+		
 
 	}
 	
