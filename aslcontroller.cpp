@@ -10,6 +10,7 @@
  * Dominik Steven Weickgenannt (dowei14@student.sdu.dk 2015/2016)
  */
  
+ 
 
 ASLController::ASLController(const std::string& name, const std::string& revision)
 	: AbstractController(name, revision){
@@ -31,6 +32,7 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	currentBox = 0;
 	prevMotorLeft = 0;
 	prevMotorRight = 0;
+	sequenceCounter = 0;
 
 	// things for plotting
 	parameter.resize(8);
@@ -158,16 +160,15 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 /********************************************************************************************
 *** run controller step
 ********************************************************************************************/	
-	if (!reset && (counter > 5)) {
+	if (!reset && (counter > 5) && (state < 8)) {
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
-		
 		// FSM to update state
-		fsmStep(motors);
+//		fsmStep(motors);
 //		storeTriggerAccuracy(false);
 		
 		// Learned triggers + hand designed RNN
-//		calcTriggers();
-//		rnnStep(motors);
+		calcTriggers();
+		rnnStep(motors);
 		storeLSTMTrain();
 //		storeRNN();
 //		storeTriggerAccuracy(true);
@@ -190,6 +191,8 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 //			storeSingleTrigger(6);							
 //			storeSingleTrigger(7);
 		}
+	} else {
+		cout<<reset<<" "<<state<<endl;
 	}
 	counter++; // increase counter
 
@@ -228,7 +231,7 @@ void ASLController::resetParameters(){
 	dropBoxCounter = 0;
 	state = 0;
 	counter = 0;
-
+	
 	// RNN reset
 	for (int i=0; i<8; i++){
 		triggers[i] = 0.0;
@@ -345,6 +348,10 @@ void ASLController::calcTriggers(){
 	double val6 = aslt->getASLT6()->getOutput(16);
 	double val7 = aslt->getASLT7()->getOutput(16);	
 	
+	// triggersUnfiltered is a work in progress, testing stuff with LSTM training
+	triggersUnfiltered[0]=val0;	triggersUnfiltered[1]=val1;	triggersUnfiltered[2]=val2;	triggersUnfiltered[3]=val3;	
+	triggersUnfiltered[4]=val4;triggersUnfiltered[5]=val5;	triggersUnfiltered[6]=val6;	triggersUnfiltered[7]=val7;
+	
 	// this is in essence a thresholding layer - will be added to the ASLT class later
 	for (int i=0; i<8; i++)	triggers[i] = 0;
 	if ((round(val0)>0) || (round(val1)>0) || (round(val2)>0) || (round(val3)>0) || (round(val4)>0) || (round(val5)>0) || (round(val6)>0) || (round(val7)>0)){
@@ -456,7 +463,7 @@ void ASLController::executeAction(motor* motors){
 	} else if (state==7){
 		reset = true;
 		runNumber++;
-		state=0;
+		state=8;
 	}
 }
 
@@ -1271,8 +1278,7 @@ void ASLController::storeRNN(){
 }
 
 void ASLController::storeLSTMTrain(){
-
-	std::string in11name = "../data/LSTMTrain/" + std::to_string(runNumber) + "sensors.txt";
+	std::string in11name = "../data/LSTMTrain/sensors.txt";
 	in11.open (in11name.c_str(), ios::app);
 	in11.precision(5);
 	in11<<fixed;
@@ -1290,7 +1296,7 @@ void ASLController::storeLSTMTrain(){
 	// close files	
   	in11.close();
   	
-	in11name = "../data/LSTMTrain/" + std::to_string(runNumber) + "triggerOut.txt";
+	in11name = "../data/LSTMTrain/triggerOut.txt";
 	in11.open (in11name.c_str(), ios::app);
 	in11.precision(5);
 	in11<<fixed;
@@ -1304,7 +1310,21 @@ void ASLController::storeLSTMTrain(){
 	// close files	
   	in11.close();
   	
-	in11name = "../data/LSTMTrain/" + std::to_string(runNumber) + "class.txt";
+	in11name = "../data/LSTMTrain/triggerOutUnfiltered.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11.precision(5);
+	in11<<fixed;
+
+	// add triggers to outT
+	for (int i=0; i<8; i++) {
+		in11<<triggersUnfiltered[i]<<" ";
+	}
+	in11<<"\n";
+
+	// close files	
+  	in11.close();
+  	
+	in11name = "../data/LSTMTrain/class.txt";
 	in11.open (in11name.c_str(), ios::app);
 	in11.precision(5);
 	in11<<fixed;
@@ -1314,4 +1334,17 @@ void ASLController::storeLSTMTrain(){
 	// close files	
   	in11.close();
  
+ 	sequenceCounter++;
+	if (state==7){
+		in11name = "../data/LSTMTrain/seqTagsLength.txt";
+		in11.open (in11name.c_str(), ios::app);
+		in11.precision(5);
+		in11<<fixed;
+
+		in11<<runNumber<<" "<<sequenceCounter<<"\n";
+
+		// close files	
+		in11.close();
+		sequenceCounter = 0;
+	}
 }

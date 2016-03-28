@@ -88,6 +88,8 @@ class ASLController : public AbstractController {
 	std::ofstream out1;
 	std::ofstream out7;
 	std::ofstream outT;
+	int sequenceCounter;
+	float triggersUnfiltered[8];
 	
 	
     //Define global parameters-end//
