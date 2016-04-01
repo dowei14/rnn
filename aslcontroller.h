@@ -187,7 +187,8 @@ class ASLController : public AbstractController {
     virtual void storeSingleTrigger(int action);
     virtual void storeTriggerAccuracy(bool fsm);
     virtual void storeRNN();    
-    virtual void storeLSTMTrain();   
+    virtual void storeLSTMTrain();  
+    virtual void storeState();
 
   protected:
 

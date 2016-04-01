@@ -59,10 +59,15 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	weights[0]=1.0;	weights[1]=1.0;	weights[2]=1.0;	weights[3]=0.1;	weights[4]=0.1;	weights[5]=0.05;	weights[6]=0.2;	weights[7]=0.1;
 
 	// lstm
-	lstm.setup(11,10,8, 1.0); // inputs - hidden - outputs - bias
-	std::string filename = "lstm_sensor_11-10-8.jsn";
+	lstmMode = 2;		// 1: sensor values as inputs, 2: trigger values as inputs
+	if (lstmMode ==1) lstm.setup(11,10,8, 1.0); // inputs - hidden - outputs - bias
+	else lstm.setup(8,10,8, 1.0);
+
+
+//	std::string filename = "lstm_sensor_11-10-8.jsn"; // for mode 1
+	std::string filename = "lstm_trigger_8-10-8.jsn"; // for mode 2
 	lstm.loadWeights(filename.c_str());
-	lstmMode = 1;
+
 	
 
 }
@@ -171,22 +176,23 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
 		// FSM to update state
 //		fsmStep(motors);
-//		storeTriggerAccuracy(false);
+
 		
 		// Learned triggers + hand designed RNN
 //		calcTriggers();
 //		rnnStep(motors);
-//		storeLSTMTrain();
-//		storeRNN();
-//		storeTriggerAccuracy(true);
+
+
 
 		// LSTM (motors, mode)
 		// mode == 1: sensor values as inputs
 		// mode == 2: trigger values as inputs
+		if(lstmMode==2) calcTriggers();
 		lstmStep(motors,lstmMode);
-		
+//		storeState();
+		std::cout<<state<<std::endl;
 		// execute action based on current state of the system
-		executeAction(motors);
+		executeAction(motors);		
 		
 		// Store Values for training
 		if (runNumber>0) {
@@ -202,6 +208,10 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 //			storeSingleTrigger(5);
 //			storeSingleTrigger(6);							
 //			storeSingleTrigger(7);
+//			storeLSTMTrain();
+//			storeRNN();
+//			storeTriggerAccuracy(true); // this one after calcTrigggers
+//			storeTriggerAccuracy(false); // this one after fsm Step
 		}
 	} else {
 		//cout<<reset<<" "<<state<<endl;
@@ -396,7 +406,7 @@ std::vector<float> ASLController::createLstmSensorVector(){
 }
 std::vector<float> ASLController::createLstmTriggerVector(){
 	std::vector<float> inputVector;
-	for (int i=0;i<8;i++) inputVector.push_back(triggers[i]);
+	for (int i=0;i<8;i++) inputVector.push_back(triggers[i]);	
 	return inputVector;
 }
 
@@ -1394,4 +1404,11 @@ void ASLController::storeLSTMTrain(){
 		in11.close();
 		sequenceCounter = 0;
 	}
+}
+
+void ASLController::storeState(){
+	std::string in11name = "../data/state.txt";
+	in11.open (in11name.c_str(), ios::app);
+	in11<<state<<"\n";
+	in11.close();
 }
