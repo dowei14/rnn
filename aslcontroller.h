@@ -11,7 +11,7 @@
 #include <vector>
 #include <fstream>
 #include "aslt.h"
-
+#include "lstm/lstm.h"
 
 /*********************************************************************
 ***  Parameters
@@ -91,6 +91,9 @@ class ASLController : public AbstractController {
 	int sequenceCounter;
 	float triggersUnfiltered[8];
 	
+	// LSTM
+	LSTM lstm;
+	int lstmMode;
 	
     //Define global parameters-end//
 
@@ -144,6 +147,9 @@ class ASLController : public AbstractController {
 	virtual void calcTriggers();
 	virtual void fsmStep(motor* motors);
 	virtual void rnnStep(motor* motors);
+	virtual std::vector<float> createLstmSensorVector();
+	virtual std::vector<float> createLstmTriggerVector();	
+	virtual void lstmStep(motor* motors, int mode);	
 	virtual void executeAction(motor* motors);
 
 	// DSW return reset variable

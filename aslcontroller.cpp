@@ -58,6 +58,13 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	}
 	weights[0]=1.0;	weights[1]=1.0;	weights[2]=1.0;	weights[3]=0.1;	weights[4]=0.1;	weights[5]=0.05;	weights[6]=0.2;	weights[7]=0.1;
 
+	// lstm
+	lstm.setup(11,10,8, 1.0); // inputs - hidden - outputs - bias
+	std::string filename = "lstm_sensor_11-10-8.jsn";
+	lstm.loadWeights(filename.c_str());
+	lstmMode = 1;
+	
+
 }
 
 
@@ -167,11 +174,16 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 //		storeTriggerAccuracy(false);
 		
 		// Learned triggers + hand designed RNN
-		calcTriggers();
-		rnnStep(motors);
-		storeLSTMTrain();
+//		calcTriggers();
+//		rnnStep(motors);
+//		storeLSTMTrain();
 //		storeRNN();
 //		storeTriggerAccuracy(true);
+
+		// LSTM (motors, mode)
+		// mode == 1: sensor values as inputs
+		// mode == 2: trigger values as inputs
+		lstmStep(motors,lstmMode);
 		
 		// execute action based on current state of the system
 		executeAction(motors);
@@ -192,7 +204,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 //			storeSingleTrigger(7);
 		}
 	} else {
-		cout<<reset<<" "<<state<<endl;
+		//cout<<reset<<" "<<state<<endl;
 	}
 	counter++; // increase counter
 
@@ -239,6 +251,9 @@ void ASLController::resetParameters(){
 		neuronsPrev[i] = 0.0;
 	}
 	neurons[0]=1.0;
+	
+	// LSTM reset
+	lstm.reset();
 }
 
 /********************************************************************************************
@@ -358,6 +373,38 @@ void ASLController::calcTriggers(){
 		//cout<<std::setprecision(5)<<val0<<" "<<val1<<" "<<val2<<" "<<val3<<" "<<val4<<" "<<val5<<" "<<val6<<" "<<val7<<endl;
 		triggers[0]=val0;	triggers[1]=val1;	triggers[2]=val2;	triggers[3]=val3;	triggers[4]=val4;	triggers[5]=val5;	triggers[6]=val6;	triggers[7]=val7;
 	}
+}
+
+/********************************************************************************************
+*** trained LSTM to do a step
+********************************************************************************************/
+std::vector<float> ASLController::createLstmSensorVector(){
+	std::vector<float> inputVector;
+	inputVector.push_back(prevMotorLeft);
+	inputVector.push_back(prevMotorRight);
+	inputVector.push_back(distanceCurrentBox);
+	inputVector.push_back(angleCurrentBox);
+	inputVector.push_back(irLeftLong);
+	inputVector.push_back(irRightLong);
+	inputVector.push_back(irLeftShort);
+	inputVector.push_back(irRightShort);
+	inputVector.push_back(irFront);
+	inputVector.push_back(touchGripper);
+	if (prevHaveTarget) inputVector.push_back(1.0);
+	else inputVector.push_back(0.0);
+	return inputVector;
+}
+std::vector<float> ASLController::createLstmTriggerVector(){
+	std::vector<float> inputVector;
+	for (int i=0;i<8;i++) inputVector.push_back(triggers[i]);
+	return inputVector;
+}
+
+void ASLController::lstmStep(motor* motors, int mode){
+	if (mode ==1) lstm.setInput(createLstmSensorVector());
+	else lstm.setInput(createLstmTriggerVector());
+	lstm.step();
+	state=lstm.getState();						
 }
 
 /********************************************************************************************
