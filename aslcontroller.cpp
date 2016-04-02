@@ -67,7 +67,10 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	if (lstmMode ==1) filename = "lstm_sensor_11-10-8.jsn"; // for mode 1
 	else filename = "lstm_trigger_8-10-8.jsn"; // for mode 2b
 	lstm.loadWeights(filename.c_str());
-
+	
+	//ESN
+	esn = new ASLESN();
+	esn->load();
 	
 
 }
@@ -175,7 +178,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	if (!reset && (counter > 5) && (state < 8)) {
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
 		// FSM to update state
-		fsmStep(motors);
+//		fsmStep(motors);
 
 		
 		// Learned triggers + hand designed RNN
@@ -187,10 +190,14 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		// LSTM (motors, mode)
 		// mode == 1: sensor values as inputs
 		// mode == 2: trigger values as inputs
-		if(lstmMode==2) calcTriggers();
+//		if(lstmMode==2) calcTriggers();
 //		lstmStep(motors,lstmMode);
-		storeState();
+		
+		// learned triggers + trained ESN
+		calcTriggers();
+		esnStep(motors);
 //		std::cout<<state<<std::endl;
+
 		// execute action based on current state of the system
 		executeAction(motors);		
 		
@@ -416,6 +423,19 @@ void ASLController::lstmStep(motor* motors, int mode){
 	lstm.step();
 	state=lstm.getState();						
 }
+
+
+/********************************************************************************************
+*** trained ESN do a step
+********************************************************************************************/
+void ASLController::esnStep(motor* motors){
+	std::vector<double> inputs;
+	for (int i=0;i<8;i++) inputs.push_back(triggers[i]);
+	std::vector<double> targets;
+	for (int o=0;o<8;o++) targets.push_back(0.0);
+	state = esn->RecurrentNetwork(inputs,targets, false);				
+}
+
 
 /********************************************************************************************
 *** Hand designed RNN

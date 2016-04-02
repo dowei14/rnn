@@ -43,3 +43,4 @@ start
 *.msg
 Makefile.conf~
 .history
+output_matrix

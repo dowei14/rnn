@@ -10,8 +10,9 @@
 #include <cmath> //pow sqrt
 #include <vector>
 #include <fstream>
-#include "aslt.h"
-#include "lstm/lstm.h"
+#include "aslt.h" // FF Trigger Network
+#include "lstm/lstm.h" // LSTM
+#include "esn/aslesn.h" // ESN
 
 /*********************************************************************
 ***  Parameters
@@ -95,6 +96,9 @@ class ASLController : public AbstractController {
 	LSTM lstm;
 	int lstmMode;
 	
+	// ESN
+	ASLESN* esn;
+	
     //Define global parameters-end//
 
     /// contructor (hint: use $ID$ for revision)
@@ -150,6 +154,8 @@ class ASLController : public AbstractController {
 	virtual std::vector<float> createLstmSensorVector();
 	virtual std::vector<float> createLstmTriggerVector();	
 	virtual void lstmStep(motor* motors, int mode);	
+	virtual void esnStep(motor* motors);
+	
 	virtual void executeAction(motor* motors);
 
 	// DSW return reset variable
