@@ -41,3 +41,5 @@ start
 *.depend
 .gitignore~
 *.msg
+Makefile.conf~
+.history
