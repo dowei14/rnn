@@ -13,6 +13,7 @@
 #include "aslt.h" // FF Trigger Network
 #include "lstm/lstm.h" // LSTM
 #include "esn/aslesn.h" // ESN
+#include "dnf/dnf.h" // DNF
 
 /*********************************************************************
 ***  Parameters
@@ -99,6 +100,9 @@ class ASLController : public AbstractController {
 	// ESN
 	ASLESN* esn;
 	
+	// DNF
+	DNF* dnf;
+	
     //Define global parameters-end//
 
     /// contructor (hint: use $ID$ for revision)
@@ -155,6 +159,8 @@ class ASLController : public AbstractController {
 	virtual std::vector<float> createLstmTriggerVector();	
 	virtual void lstmStep(motor* motors, int mode);	
 	virtual void esnStep(motor* motors);
+	virtual void dnfStep(motor* motors);
+	virtual int dnfCalcState(std::vector<double> input);	
 	
 	virtual void executeAction(motor* motors);
 

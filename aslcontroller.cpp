@@ -68,11 +68,31 @@ ASLController::ASLController(const std::string& name, const std::string& revisio
 	else filename = "lstm_trigger_8-10-8.jsn"; // for mode 2b
 	lstm.loadWeights(filename.c_str());
 	
-	//ESN
+	// ESN
 	esn = new ASLESN();
 	esn->load();
 	
+	// DNF
+	dnf = new DNF();
+	int size = 90;
+	double tau = 5.0;
+	double h = -5.0;
+	double beta = 4.0;
+	dnf->setup(size,tau,h,beta);
 
+	double sigmaExc 		= 5.0;
+    double amplitudeExc 	= 50.0;
+    double sigmaInh 		= 12.5;
+    double amplitudeInh 	= 50.0;
+    double amplitudeGlobal 	= 0.0;
+	double cutoffFactor		= 5.0;
+	dnf->setupLateral(sigmaExc,amplitudeExc,sigmaInh,amplitudeInh,amplitudeGlobal,cutoffFactor);
+
+	int numStims = 8;
+	double sigma_input = 10;
+	for (int i=0;i<numStims;i++) {
+		dnf->addStim((i+1)*10,sigma_input);
+	}
 }
 
 
@@ -194,13 +214,17 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 //		lstmStep(motors,lstmMode);
 		
 		// learned triggers + trained ESN
-		calcTriggers();
-		esnStep(motors);
+//		calcTriggers();
+//		esnStep(motors);
+//		storeState();
 //		std::cout<<state<<std::endl;
+
+		// learned triggers + dnf
+		calcTriggers();
+		dnfStep(motors);	
 
 		// execute action based on current state of the system
 		executeAction(motors);		
-		
 		// Store Values for training
 		if (runNumber>0) {
 //			store();
@@ -434,6 +458,40 @@ void ASLController::esnStep(motor* motors){
 	std::vector<double> targets;
 	for (int o=0;o<8;o++) targets.push_back(0.0);
 	state = esn->RecurrentNetwork(inputs,targets, false);				
+}
+
+/********************************************************************************************
+*** DNF do a step
+********************************************************************************************/
+int ASLController:: dnfCalcState(std::vector<double> inputVec){
+	if (inputVec.size() != 90) {
+		std::cout<<"--- Wrong Size ---"<<std::endl;
+		return -1;
+	}
+	double max = 0;
+    int maxID = 0;
+    for (int i=0; i<8;i++){    
+        int start = 5+i*10;
+        int stop =5+(i+1)*10;
+		double currentSum = 0.0;
+        for (int s=start;s<stop;s++) currentSum += inputVec[s];			
+        if (currentSum > max){
+            max = currentSum;
+            maxID = i;
+		}
+	}
+    return maxID;
+}
+
+
+void ASLController::dnfStep(motor* motors){
+	std::vector<double> inputs;
+	for (int i=0;i<8;i++) inputs.push_back(triggers[i]);
+	dnf->setAmplitudes(inputs);
+	dnf->step();
+	state = dnfCalcState(dnf->getOutput());
+	if (state==7) state=0;
+	std::cout<<state<<std::endl;	
 }
 
 
