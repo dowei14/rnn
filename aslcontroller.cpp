@@ -198,7 +198,7 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 	if (!reset && (counter > 5) && (state < 8)) {
 		/*** either use calcTriggers+rnnStep or fsmStep to determine which action to execute ***/
 		// FSM to update state
-//		fsmStep(motors);
+		fsmStep(motors);
 
 		
 		// Learned triggers + hand designed RNN
@@ -216,12 +216,13 @@ void ASLController::step(const sensor* sensors, int sensornumber,
 		// learned triggers + trained ESN
 //		calcTriggers();
 //		esnStep(motors);
-//		storeState();
-//		std::cout<<state<<std::endl;
 
 		// learned triggers + dnf
-		calcTriggers();
-		dnfStep(motors);	
+//		calcTriggers();
+//		dnfStep(motors);	
+
+		// store state for plot
+//		storeState();
 
 		// execute action based on current state of the system
 		executeAction(motors);		
